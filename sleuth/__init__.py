@@ -2,10 +2,11 @@ from wsgiref.simple_server import make_server
 from pyramid.config import Configurator
 from pyramid.response import Response
 from lxml import objectify
+import pt_api
 
 
 class Sleuth_Web_App(object):
-    """This class listens for pivotal tracker activity posts, and publishes them."""
+    '''This class listens for pivotal tracker activity posts, and publishes them.'''
     
     def __init__(self, activity_receiver, port=8080):
         self.__activity_receiver = activity_receiver
@@ -24,62 +25,98 @@ class Sleuth_Web_App(object):
 
 
 class Story(object):
-	"""The class represents a Pivotal Tracker User Story"""
+    '''The class represents a Pivotal Tracker User Story'''
 
-	@static
-	def create(story, activity):
-		return Story(story.id, activity.project_id,
+    @staticmethod
+    def create(story, activity):
+	   return Story(story.id, activity.project_id,
 			           story.story_type, story.url, _story.estimate, story.current_state,
 			           story.description, story.name, story.requested_by, _story.owned_by,
-			           create_at=_story.created_at, accepted_at=_story.accepted_at, labels=_story.labels)
+			           created_at=_story.created_at, accepted_at=_story.accepted_at, labels=_story.labels)
 
 
-	def __init__(self, story_id, project_id,
-	             story_type, url, estimate, current_state,
-	             description, name, requested_by, owned_by,
-	             created_at=None, accepted_at=None, labels=[]):
-		self.id = story_id
-		self.project_id = project_id
-		self.story_type = story_type
-		self.url = url
-		self.estimate = estimate
-		self.current_state = current_state
-		self.description = description
-		self.name = name
-		self.requested_by = requested_by
-		self.owned_by = owned_by
-		self.created_at = created_at
-		self.accepted_at = accepted_at
-		self.labels = labels.split(",")
-
-
+    @staticmethod
+    def create_from_load(project_id, storyxml):
+        try:
+            labels = str(storyxml.labels).split(',')
+        except AttributeError:
+            labels = []
+        try:
+            accepted_at = storyxml.accepted_at
+        except AttributeError:
+            accepted_at = None
+        try:
+            owned_by = storyxml.owned_by
+        except AttributeError:
+            owned_by = None
+        return Story(storyxml.id, project_id,
+                    storyxml.story_type, storyxml.url, storyxml.estimate, storyxml.current_state,
+                    storyxml.description, storyxml.name, storyxml.requested_by, owned_by,
+                    created_at=storyxml.created_at, accepted_at=accepted_at, labels=labels)
+       
+       
+    def __init__(self, story_id, project_id, story_type, url, estimate, current_state, description, name, requested_by, owned_by,
+                 created_at=None, accepted_at=None, labels=[]):
+        self.id = story_id
+        self.project_id = project_id
+        self.story_type = story_type
+        self.url = url
+        self.estimate = estimate
+        self.current_state = current_state
+        self.description = description
+        self.name = name
+        self.requested_by = requested_by
+        self.owned_by = owned_by
+        self.created_at = created_at
+        self.accepted_at = accepted_at
+        self.labels = labels
+    
     def update(story, activity):
-    	pass
+        pass
 
     def delete():
     	pass
 
 
 class Sleuth(object):
-	"""This class receives the activity xml parsed from the web app, and updates all the data"""
-	def __init__(self):
-		self.projects = {}
-		self.stories = {}
-
-	def activity_web_hook(self, activity):
+    '''This class receives the activity xml parsed from the web app, and updates all the data'''
+    def __init__(self, project_ids, track_blocks, token):
+        self.project_ids = project_ids
+        self.token = token
+        self.track_blocks = track_blocks
+        self.stories = {}
+        self._loaded = False
+        self._loadStories()
+    
+    def _loadStories(self):
+        ''' Load the stories from the projects
+        '''
+        for project_id in self.project_ids:
+            self.stories[project_id] = {}
+            for track_block in self.track_blocks:
+                self.stories[project_id][track_block] = pt_api.getStories(project_id, track_block, self.token,
+                                                                          story_constructor=Story.create_from_load)
+                print self.stories[project_id][track_block]
+        
+        self._loaded = True
+                
+    def activity_web_hook(self, activity):
         if activity.event_type == 'story_update':
         	for story in activity.stories.iterchildren():
         		if story.id in self.stories:
         			self.stories[story.id].update(story, activity)
-		elif activity.event_type == 'story_create':
+        elif activity.event_type == 'story_create':
 			print activity
-		elif activity.event_type == 'story_delete':
-			if story.id in self.stories:
-       			self.stories[story.id].delete()
-       			del self.stories[story.id]
-	
-
+        elif activity.event_type == 'story_delete':
+            if story.id in self.stories:
+                self.stories[story.id].delete()
+                del self.stories[story.id]
 
 
 if __name__ == '__main__':
-    web_app = Sleuth_Web_App(Sleuth())
+    import argparse
+    parser = argparse.ArgumentParser(description='Sleuth')
+    parser.add_argument('--token', help='The pivotal tracker API token')
+    parser.add_argument('--projects', nargs='+', type=int, help='The pivotal tracker project IDs')
+    args = parser.parse_args()
+    web_app = Sleuth_Web_App(Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog'], token=args.token))
