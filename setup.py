@@ -20,7 +20,8 @@ requires = [
     "lxml",
     "argparse",
     "nose",
-    "unittest2"
+    "unittest2",
+    "mock"
 ]
 
 setup(
