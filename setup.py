@@ -41,7 +41,7 @@ setup(
     package_data={},
     zip_safe=False,
     namespace_packages=[],
-    test_suite="",
+    test_suite="sleuth.tests",
     install_requires=requires,
     entry_points="""""",
     scripts=[],
