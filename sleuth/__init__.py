@@ -86,11 +86,6 @@ class Sleuth(object):
         self.track_blocks = track_blocks
         self.stories = {}
         self._loaded = False
-        self._loadStories()
-    
-    def _loadStories(self):
-        ''' Load the stories from the projects
-        '''
         for project_id in self.project_ids:
             self.stories[project_id] = {}
             for track_block in self.track_blocks:
