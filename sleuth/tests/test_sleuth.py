@@ -39,10 +39,10 @@ class Test_Sleuth(unittest2.TestCase):
         self.assertEqual(sleuth.token, self.token)
         self.assertEqual(sleuth.track_blocks, self.track_blocks)
         
-        expected_get_story_calls = [call(1, 'current', self.token, story_constructor=Story.create_from_load),
-                                 call(1, 'backlog', self.token, story_constructor=Story.create_from_load),
-                                 call(2, 'current', self.token, story_constructor=Story.create_from_load),
-                                 call(2, 'backlog', self.token, story_constructor=Story.create_from_load)]
+        expected_get_story_calls = [call(1, 'current', self.token, story_constructor=Story.create),
+                                 call(1, 'backlog', self.token, story_constructor=Story.create),
+                                 call(2, 'current', self.token, story_constructor=Story.create),
+                                 call(2, 'backlog', self.token, story_constructor=Story.create)]
 
         self.assertListEqual(expected_get_story_calls, pt_api.getStories.call_args_list)
         
@@ -69,12 +69,13 @@ class Test_Sleuth(unittest2.TestCase):
         newStory = MagicMock(id=19)
         activity = MagicMock(event_type='story_create')
         activity.stories.iterchildren.return_value = [newStory]
-        
+        realNewStory = Story.create.return_value
         # action
         sleuth.activity_web_hook(activity)
         
         # confirm
-        # TODO
+        Story.create.assert_called_once_with(activity.project_id, newStory)
+        self.assertTrue(self.stories[realNewStory.id] == realNewStory)
         
     def test_activity_web_hook_delete(self, Story, pt_api):
         # setup

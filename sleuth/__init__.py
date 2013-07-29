@@ -28,14 +28,7 @@ class Story(object):
     '''The class represents a Pivotal Tracker User Story'''
 
     @staticmethod
-    def create(story, activity):
-        return Story(story.id, activity.project_id,
-                    story.story_type, story.url, story.estimate, story.current_state,
-                    story.description, story.name, story.requested_by, story.owned_by,
-                    created_at=story.created_at, accepted_at=story.accepted_at, labels=story.labels)
-
-    @staticmethod
-    def create_from_load(project_id, storyxml):
+    def create(project_id, storyxml):
         try:
             labels = str(storyxml.labels).split(',')
         except AttributeError:
@@ -91,23 +84,24 @@ class Sleuth(object):
         for project_id in self.project_ids:
             for track_block in self.track_blocks:
                 self.stories.update(dict([(story.id, story) for story in _flatten_list(pt_api.getStories(project_id, track_block, self.token,
-                                                                                                   story_constructor=Story.create_from_load))]))
+                                                                                                   story_constructor=Story.create))]))
         
         self._loaded = True
                 
     def activity_web_hook(self, activity):
         if activity.event_type == 'story_update':
-            for story in activity.stories.iterchildren():
-                if story.id in self.stories:
-                    self.stories[story.id].update(story, activity)
+            for storyxml in activity.stories.iterchildren():
+                if storyxml.id in self.stories:
+                    self.stories[storyxml.id].update(storyxml, activity)
         elif activity.event_type == 'story_create':
-            for story in activity.stories.iterchildren():
-                print story
+            for storyxml in activity.stories.iterchildren():
+                story = Story.create(activity.project_id, storyxml)
+                self.stories[story.id] = story
         elif activity.event_type == 'story_delete':
-            for story in activity.stories.iterchildren():
-                if story.id in self.stories:
-                    self.stories[story.id].delete()
-                    del self.stories[story.id]
+            for storyxml in activity.stories.iterchildren():
+                if storyxml.id in self.stories:
+                    self.stories[storyxml.id].delete()
+                    del self.stories[storyxml.id]
 
 
 if __name__ == '__main__':
