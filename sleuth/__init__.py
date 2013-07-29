@@ -19,7 +19,7 @@ class Sleuth_Web_App(object):
         self.__server.serve_forever()
     
     def __activity_web_hook(self, request):
-    	activity = objectify.fromstring(request.body)
+        activity = objectify.fromstring(request.body)
         self.__activity_receiver.activity_web_hook(activity)
         return Response('OK')
 
@@ -29,11 +29,10 @@ class Story(object):
 
     @staticmethod
     def create(story, activity):
-	   return Story(story.id, activity.project_id,
-			           story.story_type, story.url, _story.estimate, story.current_state,
-			           story.description, story.name, story.requested_by, _story.owned_by,
-			           created_at=_story.created_at, accepted_at=_story.accepted_at, labels=_story.labels)
-
+        return Story(story.id, activity.project_id,
+                    story.story_type, story.url, story.estimate, story.current_state,
+                    story.description, story.name, story.requested_by, story.owned_by,
+                    created_at=story.created_at, accepted_at=story.accepted_at, labels=story.labels)
 
     @staticmethod
     def create_from_load(project_id, storyxml):
@@ -54,7 +53,6 @@ class Story(object):
                     storyxml.description, storyxml.name, storyxml.requested_by, owned_by,
                     created_at=storyxml.created_at, accepted_at=accepted_at, labels=labels)
        
-       
     def __init__(self, story_id, project_id, story_type, url, estimate, current_state, description, name, requested_by, owned_by,
                  created_at=None, accepted_at=None, labels=[]):
         self.id = story_id
@@ -71,11 +69,11 @@ class Story(object):
         self.accepted_at = accepted_at
         self.labels = labels
     
-    def update(story, activity):
+    def update(self, story, activity):
         pass
 
-    def delete():
-    	pass
+    def delete(self):
+        pass
 
 
 class Sleuth(object):
@@ -97,11 +95,11 @@ class Sleuth(object):
                 
     def activity_web_hook(self, activity):
         if activity.event_type == 'story_update':
-        	for story in activity.stories.iterchildren():
-        		if story.id in self.stories:
-        			self.stories[story.id].update(story, activity)
+            for story in activity.stories.iterchildren():
+                if story.id in self.stories:
+                    self.stories[story.id].update(story, activity)
         elif activity.event_type == 'story_create':
-			print activity
+            print activity
         elif activity.event_type == 'story_delete':
             if story.id in self.stories:
                 self.stories[story.id].delete()
