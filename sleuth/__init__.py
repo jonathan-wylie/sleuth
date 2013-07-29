@@ -20,6 +20,7 @@ class Sleuth_Web_App(object):
     
     def __activity_web_hook(self, request):
         activity = objectify.fromstring(request.body)
+        print activity
         self.__activity_receiver.activity_web_hook(activity)
         return Response('OK')
 
@@ -41,10 +42,22 @@ class Story(object):
             owned_by = storyxml.owned_by
         except AttributeError:
             owned_by = None
+        try:
+            estimate = storyxml.estimate
+        except AttributeError:
+            estimate = None
+        try:
+            description = storyxml.description
+        except AttributeError:
+            description = None
+        try:
+            created_at = storyxml.created_at
+        except AttributeError:
+            created_at = None
         return Story(storyxml.id, project_id,
-                    storyxml.story_type, storyxml.url, storyxml.estimate, storyxml.current_state,
-                    storyxml.description, storyxml.name, storyxml.requested_by, owned_by,
-                    created_at=storyxml.created_at, accepted_at=accepted_at, labels=labels)
+                    storyxml.story_type, storyxml.url, estimate, storyxml.current_state,
+                    description, storyxml.name, storyxml.requested_by, owned_by,
+                    created_at=created_at, accepted_at=accepted_at, labels=labels)
        
     def __init__(self, story_id, project_id, story_type, url, estimate, current_state, description, name, requested_by, owned_by,
                  created_at=None, accepted_at=None, labels=[]):
@@ -70,8 +83,12 @@ class Story(object):
 
 
 def _flatten_list(alist):
-    return [item for sublist in alist for item in sublist]
-
+    if type(alist) != type([]):
+        return [alist]
+    return_list = []
+    for item in alist:
+        return_list.extend(_flatten_list(item))
+    return return_list
 
 class Sleuth(object):
     '''This class receives the activity xml parsed from the web app, and updates all the data'''
@@ -87,22 +104,25 @@ class Sleuth(object):
                                                                                                    story_constructor=Story.create))]))
         
         self._loaded = True
+        print self._loaded
                 
     def activity_web_hook(self, activity):
         if activity.event_type == 'story_update':
             for storyxml in activity.stories.iterchildren():
                 if storyxml.id in self.stories:
                     self.stories[storyxml.id].update(storyxml, activity)
+                    print('Story update %s' % storyxml.id)
         elif activity.event_type == 'story_create':
             for storyxml in activity.stories.iterchildren():
                 story = Story.create(activity.project_id, storyxml)
                 self.stories[story.id] = story
+                print('Create New Story %s' % storyxml.id)
         elif activity.event_type == 'story_delete':
             for storyxml in activity.stories.iterchildren():
                 if storyxml.id in self.stories:
                     self.stories[storyxml.id].delete()
                     del self.stories[storyxml.id]
-
+                    print('Story delete %s' % storyxml.id)
 
 if __name__ == '__main__':
     import argparse
