@@ -1,51 +1,113 @@
 import unittest2
-from mock import patch
+from mock import patch, call,MagicMock
 from sleuth import Sleuth
 
 
+def flatten_list(alist):
+    return [item for sublist in alist for item in sublist]
+
+
+@patch('sleuth.pt_api')
+@patch('sleuth.Story')
 class Test_Sleuth(unittest2.TestCase):
     
     def setUp(self):
         self.project_ids = [1, 2]
         self.track_blocks = ['current', 'backlog']
         self.token = '--token--'
+        self.project1_current = [MagicMock(id=1), MagicMock(id=2), MagicMock(id=3), MagicMock(id=4), MagicMock(id=5)]
+        self.project1_backlog = [[MagicMock(id=6), MagicMock(id=7), MagicMock(id=8)], [MagicMock(id=9), MagicMock(id=10)]]
+        self.project2_current = [MagicMock(id=11), MagicMock(id=12), MagicMock(id=13)]
+        self.project2_backlog = [[MagicMock(id=14), MagicMock(id=15)], [MagicMock(id=16), MagicMock(id=17), MagicMock(id=18)]]
+        
+        self.stories = {}
+        
+        self.stories.update(dict([(story.id, story) for story in flatten_list(self.project1_current)]))
+        self.stories.update(dict([(story.id, story) for story in flatten_list(self.project1_backlog)]))
+        self.stories.update(dict([(story.id, story) for story in flatten_list(self.project2_current)]))
+        self.stories.update(dict([(story.id, story) for story in flatten_list(self.project2_backlog)]))
 
-    @patch('sleuth.Sleuth.pt_api')
-    def Test_init(self, pt_api):
+    def test_init(self, Story, pt_api):
+        # setup
+        pt_api.getStories.side_effect = [self.project1_current, self.project1_backlog, self.project2_current, self.project2_backlog]
+        
+        # action
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        
+        # confirm
         self.assertEqual(sleuth.project_ids, self.project_ids)
         self.assertEqual(sleuth.token, self.token)
         self.assertEqual(sleuth.track_blocks, self.track_blocks)
-        #self.stories[project_id][track_block] = pt_api.getStories(project_id, track_block, self.token,
-        #                                                          story_constructor=Story.create_from_load)
-        #print self.stories[project_id][track_block]
-        print pt_api.getStories.call_args_list
+        
+        expected_get_story_calls = [call(1, 'current', self.token, story_constructor=Story.create_from_load),
+                                 call(1, 'backlog', self.token, story_constructor=Story.create_from_load),
+                                 call(2, 'current', self.token, story_constructor=Story.create_from_load),
+                                 call(2, 'backlog', self.token, story_constructor=Story.create_from_load)]
 
-    def Test_activity_web_hook_update(self, pt_api):
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        self.assertListEqual(expected_get_story_calls, pt_api.getStories.call_args_list)
+        
+        self.assertDictEqual(self.stories, sleuth.stories)
 
-    def Test_activity_web_hook_create(self, pt_api):
+    def test_activity_web_hook_update(self, Story, pt_api):
+        # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
-
-    def Test_activity_web_hook_delete(self, pt_api):
+        sleuth.stories = self.stories
+        updatedStory = MagicMock(id=15)
+        activity = MagicMock(event_type='story_update')
+        activity.stories.iterchildren.return_value = [updatedStory]
+        
+        # action
+        sleuth.activity_web_hook(activity)
+        
+        #confirm
+        sleuth.stories[15].update.assert_called_with(updatedStory, activity)
+         
+    def test_activity_web_hook_create(self, Story, pt_api):
+        # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth.stories = self.stories
+        newStory = MagicMock(id=19)
+        activity = MagicMock(event_type='story_create')
+        activity.stories.iterchildren.return_value = [newStory]
+        
+        # action
+        sleuth.activity_web_hook(activity)
+        
+        # confirm
+        # TODO
+        
+    def test_activity_web_hook_delete(self, Story, pt_api):
+        # setup
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth.stories = self.stories
+        deletedStory = MagicMock(id=15)
+        activity = MagicMock(event_type='story_delete')
+        realDeletedStory = sleuth.stories[deletedStory.id]
+        activity.stories.iterchildren.return_value = [deletedStory]
+        
+        # action
+        sleuth.activity_web_hook(activity)
+        
+        # confirm
+        self.assertTrue(deletedStory.id not in sleuth.stories)
+        self.assertTrue(realDeletedStory.delete.called)
 
 
 class Test_Story(unittest2.TestCase):
 
-    def Test_create(self):
+    def test_create(self):
         pass
 
-    def Test_create_from_load(self):
+    def test_create_from_load(self):
         pass
 
-    def Test_init(self):
+    def test_init(self):
         pass
     
-    def Test_update(self):
+    def test_update(self):
         pass
 
-    def Test_delete(self):
+    def test_delete(self):
         pass
 
 

@@ -76,6 +76,10 @@ class Story(object):
         pass
 
 
+def _flatten_list(alist):
+    return [item for sublist in alist for item in sublist]
+
+
 class Sleuth(object):
     '''This class receives the activity xml parsed from the web app, and updates all the data'''
     def __init__(self, project_ids, track_blocks, token):
@@ -85,11 +89,9 @@ class Sleuth(object):
         self.stories = {}
         self._loaded = False
         for project_id in self.project_ids:
-            self.stories[project_id] = {}
             for track_block in self.track_blocks:
-                self.stories[project_id][track_block] = pt_api.getStories(project_id, track_block, self.token,
-                                                                          story_constructor=Story.create_from_load)
-                print self.stories[project_id][track_block]
+                self.stories.update(dict([(story.id, story) for story in _flatten_list(pt_api.getStories(project_id, track_block, self.token,
+                                                                                                   story_constructor=Story.create_from_load))]))
         
         self._loaded = True
                 
@@ -99,11 +101,13 @@ class Sleuth(object):
                 if story.id in self.stories:
                     self.stories[story.id].update(story, activity)
         elif activity.event_type == 'story_create':
-            print activity
+            for story in activity.stories.iterchildren():
+                print story
         elif activity.event_type == 'story_delete':
-            if story.id in self.stories:
-                self.stories[story.id].delete()
-                del self.stories[story.id]
+            for story in activity.stories.iterchildren():
+                if story.id in self.stories:
+                    self.stories[story.id].delete()
+                    del self.stories[story.id]
 
 
 if __name__ == '__main__':

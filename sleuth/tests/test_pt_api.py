@@ -6,7 +6,7 @@ from sleuth import pt_api
 class Test_APICall(unittest2.TestCase):
     
     @patch('sleuth.pt_api.subprocess')
-    def Test_APICall(self, subprocess):
+    def test_APICall(self, subprocess):
         # setup
         url = 'http://www.myurl.co.uk/blah?stuff=things'
         token = 'xxxxxxxxxx'
