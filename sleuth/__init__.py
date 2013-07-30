@@ -153,4 +153,4 @@ if __name__ == '__main__':
     parser.add_argument('--token', help='The pivotal tracker API token')
     parser.add_argument('--projects', nargs='+', type=int, help='The pivotal tracker project IDs')
     args = parser.parse_args()
-    web_app = Sleuth_Web_App(Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog'], token=args.token))
+    web_app = Sleuth_Web_App(Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog', 'icebox'], token=args.token))
