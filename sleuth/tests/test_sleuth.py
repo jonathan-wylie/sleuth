@@ -4,7 +4,12 @@ from sleuth import Sleuth
 
 
 def flatten_list(alist):
-    return [item for sublist in alist for item in sublist]
+    if type(alist) != type([]):
+        return [alist]
+    return_list = []
+    for item in alist:
+        return_list.extend(flatten_list(item))
+    return return_list
 
 
 @patch('sleuth.pt_api')
@@ -43,7 +48,6 @@ class Test_Sleuth(unittest2.TestCase):
                                  call(1, 'backlog', self.token, story_constructor=Story.create),
                                  call(2, 'current', self.token, story_constructor=Story.create),
                                  call(2, 'backlog', self.token, story_constructor=Story.create)]
-
         self.assertListEqual(expected_get_story_calls, pt_api.getStories.call_args_list)
         
         self.assertDictEqual(self.stories, sleuth.stories)
@@ -60,7 +64,7 @@ class Test_Sleuth(unittest2.TestCase):
         sleuth.activity_web_hook(activity)
         
         #confirm
-        sleuth.stories[15].update.assert_called_with(updatedStory, activity)
+        sleuth.stories[15].update.assert_called_with(activity, updatedStory)
          
     def test_activity_web_hook_create(self, Story, pt_api):
         # setup

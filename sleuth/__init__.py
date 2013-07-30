@@ -8,7 +8,7 @@ import pt_api
 class Sleuth_Web_App(object):
     '''This class listens for pivotal tracker activity posts, and publishes them.'''
     
-    def __init__(self, activity_receiver, port=8080):
+    def __init__(self, activity_receiver, port=8081):
         self.__activity_receiver = activity_receiver
         self.__port = port
         self.__config = Configurator()
@@ -19,8 +19,8 @@ class Sleuth_Web_App(object):
         self.__server.serve_forever()
     
     def __activity_web_hook(self, request):
+        print request.body
         activity = objectify.fromstring(request.body)
-        print activity
         self.__activity_receiver.activity_web_hook(activity)
         return Response('OK')
 
@@ -75,8 +75,30 @@ class Story(object):
         self.accepted_at = accepted_at
         self.labels = labels
     
-    def update(self, story, activity):
-        pass
+    def update(self, activity, storyxml):
+        
+        for attribute in ["accepted_at", "owned_by", "estimate", "description", "created_at", "story_type",
+                          "url", "estimate", "current_state", "description", "name", "requested_by", "owned_by",
+                          "created_at", "accepted_at"]:
+            if hasattr(storyxml, attribute):
+                newValue = getattr(storyxml, attribute)
+                oldValue = getattr(self, attribute)
+                print "%s changed from %s to %s" % (attribute, newValue, oldValue)
+                setattr(self, attribute, newValue)
+        
+        try:
+            labels = str(storyxml.labels).split(',')
+            print "labels changed from %s to %s" % (self.labels, labels)
+            self.labels = labels
+        except AttributeError:
+            labels = []
+        
+        try:
+            project_id = activity.project_id
+            print "project_id changed from %s to %s" % (self.project_id, project_id)
+            self.project_id = project_id
+        except AttributeError:
+            project_id = None
 
     def delete(self):
         pass
@@ -89,6 +111,7 @@ def _flatten_list(alist):
     for item in alist:
         return_list.extend(_flatten_list(item))
     return return_list
+
 
 class Sleuth(object):
     '''This class receives the activity xml parsed from the web app, and updates all the data'''
@@ -110,7 +133,7 @@ class Sleuth(object):
         if activity.event_type == 'story_update':
             for storyxml in activity.stories.iterchildren():
                 if storyxml.id in self.stories:
-                    self.stories[storyxml.id].update(storyxml, activity)
+                    self.stories[storyxml.id].update(activity, storyxml)
                     print('Story update %s' % storyxml.id)
         elif activity.event_type == 'story_create':
             for storyxml in activity.stories.iterchildren():
