@@ -105,20 +105,8 @@ class Test_getStories(unittest2.TestCase):
         </stories>
       </iteration>
     </iterations>"""
-        
-    def test_getStories_SINGLE_BLOCK(self, APICall):
-        # setup
-        block = 'current'
-        APICall.return_value = self.iterations_reponse
-        
-        # action
-        stories = pt_api.getStories(self.project_id, block, self.token)
-        
-        # confirm
-        self.assertEqual(stories[0].id, 0)
-        self.assertEqual(stories[1].id, 1)
-        
-    def test_getStories_MULTI_BLOCK(self, APICall):
+
+    def test_getStories(self, APICall):
         # setup
         block = 'backlog'
         APICall.return_value = self.iterations_reponse

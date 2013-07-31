@@ -14,6 +14,7 @@ def flatten_list(alist):
 
 @patch('sleuth.pt_api')
 @patch('sleuth.Story')
+@patch('sleuth.lxml.etree.tostring', MagicMock())
 class Test_Sleuth(unittest2.TestCase):
     
     def setUp(self):
@@ -32,6 +33,14 @@ class Test_Sleuth(unittest2.TestCase):
         self.stories.update(dict([(story.id, story) for story in flatten_list(self.project2_current)]))
         self.stories.update(dict([(story.id, story) for story in flatten_list(self.project2_backlog)]))
 
+    def wait_for_activity_to_be_processed(self, sleuth):
+        max_wait = 5
+        waited = 0
+        while sleuth.activity_queue and waited < max_wait:
+            import time
+            time.sleep(1)
+            waited += 1
+        
     def test_init(self, Story, pt_api):
         # setup
         pt_api.getStories.side_effect = [self.project1_current, self.project1_backlog, self.project2_current, self.project2_backlog]
@@ -64,6 +73,7 @@ class Test_Sleuth(unittest2.TestCase):
         sleuth.activity_web_hook(activity)
         
         #confirm
+        self.wait_for_activity_to_be_processed(sleuth)
         sleuth.stories[15].update.assert_called_with(activity, updatedStory)
          
     def test_activity_web_hook_create(self, Story, pt_api):
@@ -78,6 +88,7 @@ class Test_Sleuth(unittest2.TestCase):
         sleuth.activity_web_hook(activity)
         
         # confirm
+        self.wait_for_activity_to_be_processed(sleuth)
         Story.create.assert_called_once_with(activity.project_id, newStory)
         self.assertTrue(self.stories[realNewStory.id] == realNewStory)
         
@@ -94,6 +105,7 @@ class Test_Sleuth(unittest2.TestCase):
         sleuth.activity_web_hook(activity)
         
         # confirm
+        self.wait_for_activity_to_be_processed(sleuth)
         self.assertTrue(deletedStory.id not in sleuth.stories)
         self.assertTrue(realDeletedStory.delete.called)
 
