@@ -137,7 +137,7 @@ class Sleuth(object):
     def loadStories(self):
         """ Reload the stories from the trackers
         """
-        with self.updateLock:
+        with self.update_lock:
             for project_id in self.project_ids:
                 for track_block in self.track_blocks:
                     self.stories.update(dict([(story.id, story) for story in _flatten_list(pt_api.getStories(project_id, track_block, self.token,
