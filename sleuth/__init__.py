@@ -8,7 +8,7 @@ import pt_api
 class Sleuth_Web_App(object):
     '''This class listens for pivotal tracker activity posts, and publishes them.'''
     
-    def __init__(self, activity_receiver, port=8081):
+    def __init__(self, activity_receiver, port):
         self.__activity_receiver = activity_receiver
         self.__port = port
         self.__config = Configurator()
@@ -152,5 +152,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Sleuth')
     parser.add_argument('--token', help='The pivotal tracker API token')
     parser.add_argument('--projects', nargs='+', type=int, help='The pivotal tracker project IDs')
+    parser.add_argument('--port', type=int, help='The port the activity_web_hook should listening on')
     args = parser.parse_args()
-    web_app = Sleuth_Web_App(Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog', 'icebox'], token=args.token))
+    web_app = Sleuth_Web_App(Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog', 'icebox'], token=args.token), port=args.port)
