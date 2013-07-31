@@ -155,7 +155,7 @@ class Sleuth(object):
         while True:
             if self.activity_queue:
                 activity = self.activity_queue.pop()
-                with self.updateLock:
+                with self.update_lock:
                     if activity.event_type == 'story_update':
                         for storyxml in activity.stories.iterchildren():
                             if storyxml.id in self.stories:
