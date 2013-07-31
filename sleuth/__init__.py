@@ -138,6 +138,8 @@ class Sleuth(object):
                 if storyxml.id in self.stories:
                     self.stories[storyxml.id].update(activity, storyxml)
                     print('Story update %s' % storyxml.id)
+                else:
+                    print('Story unknown: %s' % storyxml.id)
         elif activity.event_type == 'story_create':
             for storyxml in activity.stories.iterchildren():
                 story = Story.create(activity.project_id, storyxml)
@@ -149,11 +151,15 @@ class Sleuth(object):
                     self.stories[storyxml.id].delete()
                     del self.stories[storyxml.id]
                     print('Story delete %s' % storyxml.id)
+                else:
+                    print('Story unknown: %s' % storyxml.id)
         elif activity.event_type == 'move_into_project':
             for storyxml in activity.stories.iterchildren():
                 if storyxml.id in self.stories:
                     self.stories[storyxml.id].update(activity, storyxml)
                     print('Story move into project %s' % storyxml.id)
+                else:
+                    print('Story unknown: %s' % storyxml.id)
         elif activity.event_type == 'move_from_project':
             pass
             # because all the projects are mixed together move_from_project event_type can be ignored
