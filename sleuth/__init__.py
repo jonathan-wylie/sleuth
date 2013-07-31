@@ -83,20 +83,23 @@ class Story(object):
             if hasattr(storyxml, attribute):
                 newValue = getattr(storyxml, attribute)
                 oldValue = getattr(self, attribute)
-                print "%s changed from %s to %s" % (attribute, newValue, oldValue)
-                setattr(self, attribute, newValue)
+                if newValue != oldValue:
+                    print "%s changed from %s to %s" % (attribute, newValue, oldValue)
+                    setattr(self, attribute, newValue)
         
         try:
             labels = str(storyxml.labels).split(',')
-            print "labels changed from %s to %s" % (self.labels, labels)
-            self.labels = labels
+            if self.labels != labels:
+                print "labels changed from %s to %s" % (self.labels, labels)
+                self.labels = labels
         except AttributeError:
             labels = []
         
         try:
             project_id = activity.project_id
-            print "project_id changed from %s to %s" % (self.project_id, project_id)
-            self.project_id = project_id
+            if self.project_id != project_id:
+                print "project_id changed from %s to %s" % (self.project_id, project_id)
+                self.project_id = project_id
         except AttributeError:
             project_id = None
 
@@ -146,6 +149,16 @@ class Sleuth(object):
                     self.stories[storyxml.id].delete()
                     del self.stories[storyxml.id]
                     print('Story delete %s' % storyxml.id)
+        elif activity.event_type == 'move_into_project':
+            for storyxml in activity.stories.iterchildren():
+                if storyxml.id in self.stories:
+                    self.stories[storyxml.id].update(activity, storyxml)
+                    print('Story move into project %s' % storyxml.id)
+        elif activity.event_type == 'move_into_project':
+            pass
+            # because all the projects are mixed together move_from_project event_type can be ignored
+        else:
+            print('Unknown event type: %s' % activity.event_type)
 
 if __name__ == '__main__':
     import argparse
