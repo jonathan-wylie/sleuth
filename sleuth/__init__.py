@@ -127,7 +127,7 @@ class Sleuth(object):
                                                                                                    story_constructor=Story.create))]))
         
         self._loaded = True
-        print self._loaded
+        print "Stories are loaded"
                 
     def activity_web_hook(self, activity):
         if activity.event_type == 'story_update':
