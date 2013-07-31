@@ -154,7 +154,7 @@ class Sleuth(object):
                 if storyxml.id in self.stories:
                     self.stories[storyxml.id].update(activity, storyxml)
                     print('Story move into project %s' % storyxml.id)
-        elif activity.event_type == 'move_into_project':
+        elif activity.event_type == 'move_from_project':
             pass
             # because all the projects are mixed together move_from_project event_type can be ignored
         else:
