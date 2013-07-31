@@ -1,7 +1,8 @@
-from wsgiref.simple_server import make_server
+from lxml import objectify
 from pyramid.config import Configurator
 from pyramid.response import Response
-from lxml import objectify
+from wsgiref.simple_server import make_server
+import lxml
 import pt_api
 
 
@@ -19,7 +20,6 @@ class Sleuth_Web_App(object):
         self.__server.serve_forever()
     
     def __activity_web_hook(self, request):
-        print request.body
         activity = objectify.fromstring(request.body)
         self.__activity_receiver.activity_web_hook(activity)
         return Response('OK')
@@ -140,11 +140,13 @@ class Sleuth(object):
                     print('Story update %s' % storyxml.id)
                 else:
                     print('Story unknown: %s' % storyxml.id)
+                    print lxml.etree.tostring(storyxml)
         elif activity.event_type == 'story_create':
             for storyxml in activity.stories.iterchildren():
                 story = Story.create(activity.project_id, storyxml)
                 self.stories[story.id] = story
                 print('Create New Story %s' % storyxml.id)
+                print lxml.etree.tostring(storyxml)
         elif activity.event_type == 'story_delete':
             for storyxml in activity.stories.iterchildren():
                 if storyxml.id in self.stories:
@@ -153,6 +155,7 @@ class Sleuth(object):
                     print('Story delete %s' % storyxml.id)
                 else:
                     print('Story unknown: %s' % storyxml.id)
+                    print lxml.etree.tostring(storyxml)
         elif activity.event_type == 'move_into_project':
             for storyxml in activity.stories.iterchildren():
                 if storyxml.id in self.stories:
@@ -160,11 +163,13 @@ class Sleuth(object):
                     print('Story move into project %s' % storyxml.id)
                 else:
                     print('Story unknown: %s' % storyxml.id)
+                    print lxml.etree.tostring(storyxml)
         elif activity.event_type == 'move_from_project':
             pass
             # because all the projects are mixed together move_from_project event_type can be ignored
         else:
             print('Unknown event type: %s' % activity.event_type)
+            print lxml.etree.tostring(activity)
 
 if __name__ == '__main__':
     import argparse
