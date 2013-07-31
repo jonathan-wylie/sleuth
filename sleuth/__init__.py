@@ -84,7 +84,7 @@ class Story(object):
                 newValue = getattr(storyxml, attribute)
                 oldValue = getattr(self, attribute)
                 if newValue != oldValue:
-                    print "%s changed from %s to %s" % (attribute, newValue, oldValue)
+                    print "%s changed from %s to %s" % (attribute, oldValue, newValue)
                     setattr(self, attribute, newValue)
         
         try:
