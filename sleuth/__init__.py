@@ -4,6 +4,8 @@ from pyramid.response import Response
 from wsgiref.simple_server import make_server
 import lxml
 import pt_api
+from threading import Lock, Thread
+import time
 
 
 class Sleuth_Web_App(object):
@@ -123,53 +125,76 @@ class Sleuth(object):
         self.token = token
         self.track_blocks = track_blocks
         self.stories = {}
-        self._loaded = False
-        for project_id in self.project_ids:
-            for track_block in self.track_blocks:
-                self.stories.update(dict([(story.id, story) for story in _flatten_list(pt_api.getStories(project_id, track_block, self.token,
-                                                                                                   story_constructor=Story.create))]))
-        
-        self._loaded = True
+        self.update_lock = Lock()
+        self.load_stories_thread = Thread(target=self.loadStories())
+        self.load_stories_thread.daemon = True
+        self.load_stories_thread.start()
+        self.activity_queue = []
+        self.process_activities_thread = Thread(target=self._process_activities)
+        self.process_activities_thread.daemon = True
+        self.process_activities_thread.start()
+    
+    def loadStories(self):
+        """ Reload the stories from the trackers
+        """
+        with self.updateLock:
+            for project_id in self.project_ids:
+                for track_block in self.track_blocks:
+                    self.stories.update(dict([(story.id, story) for story in _flatten_list(pt_api.getStories(project_id, track_block, self.token,
+                                                                                                             story_constructor=Story.create))]))
         print "Stories are loaded"
-                
+    
     def activity_web_hook(self, activity):
-        if activity.event_type == 'story_update':
-            for storyxml in activity.stories.iterchildren():
-                if storyxml.id in self.stories:
-                    self.stories[storyxml.id].update(activity, storyxml)
-                    print('Story update %s' % storyxml.id)
-                else:
-                    print('Story unknown: %s' % storyxml.id)
-                    print lxml.etree.tostring(storyxml)
-        elif activity.event_type == 'story_create':
-            for storyxml in activity.stories.iterchildren():
-                story = Story.create(activity.project_id, storyxml)
-                self.stories[story.id] = story
-                print('Create New Story %s' % storyxml.id)
-                print lxml.etree.tostring(storyxml)
-        elif activity.event_type == 'story_delete':
-            for storyxml in activity.stories.iterchildren():
-                if storyxml.id in self.stories:
-                    self.stories[storyxml.id].delete()
-                    del self.stories[storyxml.id]
-                    print('Story delete %s' % storyxml.id)
-                else:
-                    print('Story unknown: %s' % storyxml.id)
-                    print lxml.etree.tostring(storyxml)
-        elif activity.event_type == 'move_into_project':
-            for storyxml in activity.stories.iterchildren():
-                if storyxml.id in self.stories:
-                    self.stories[storyxml.id].update(activity, storyxml)
-                    print('Story move into project %s' % storyxml.id)
-                else:
-                    print('Story unknown: %s' % storyxml.id)
-                    print lxml.etree.tostring(storyxml)
-        elif activity.event_type == 'move_from_project':
-            pass
-            # because all the projects are mixed together move_from_project event_type can be ignored
-        else:
-            print('Unknown event type: %s' % activity.event_type)
-            print lxml.etree.tostring(activity)
+        """ Add the story changes to a queue to be processed
+        """
+        self.activity_queue.append(activity)
+        
+    def _process_activities(self):
+        """ To be run in a thread, process all the activities in the queue
+        """
+        while True:
+            if self.activity_queue:
+                activity = self.activity_queue.pop()
+                with self.updateLock:
+                    if activity.event_type == 'story_update':
+                        for storyxml in activity.stories.iterchildren():
+                            if storyxml.id in self.stories:
+                                self.stories[storyxml.id].update(activity, storyxml)
+                                print('Story update %s' % storyxml.id)
+                            else:
+                                print('Story unknown: %s' % storyxml.id)
+                                print lxml.etree.tostring(storyxml)
+                    elif activity.event_type == 'story_create':
+                        for storyxml in activity.stories.iterchildren():
+                            story = Story.create(activity.project_id, storyxml)
+                            self.stories[story.id] = story
+                            print('Create New Story %s' % storyxml.id)
+                            print lxml.etree.tostring(storyxml)
+                    elif activity.event_type == 'story_delete':
+                        for storyxml in activity.stories.iterchildren():
+                            if storyxml.id in self.stories:
+                                self.stories[storyxml.id].delete()
+                                del self.stories[storyxml.id]
+                                print('Story delete %s' % storyxml.id)
+                            else:
+                                print('Story unknown: %s' % storyxml.id)
+                                print lxml.etree.tostring(storyxml)
+                    elif activity.event_type == 'move_into_project':
+                        for storyxml in activity.stories.iterchildren():
+                            if storyxml.id in self.stories:
+                                self.stories[storyxml.id].update(activity, storyxml)
+                                print('Story move into project %s' % storyxml.id)
+                            else:
+                                print('Story unknown: %s' % storyxml.id)
+                                print lxml.etree.tostring(storyxml)
+                    elif activity.event_type == 'move_from_project':
+                        pass
+                        # because all the projects are mixed together move_from_project event_type can be ignored
+                    else:
+                        print('Unknown event type: %s' % activity.event_type)
+                        print lxml.etree.tostring(activity)
+            else:
+                time.sleep(1)
 
 if __name__ == '__main__':
     import argparse
