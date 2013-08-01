@@ -16,12 +16,12 @@ class Sleuth_Web_App(object):
         self.__port = port
         self.__config = Configurator()
         self.__config.add_route('activity_web_hook', '/activity_web_hook')
-        self.__config.add_view(self.__activity_web_hook, route_name='activity_web_hook', request_method='POST')
+        self.__config.add_view(self._activity_web_hook, route_name='activity_web_hook', request_method='POST')
         self.__app = self.__config.make_wsgi_app()
         self.__server = make_server('0.0.0.0', self.__port, self.__app)
         self.__server.serve_forever()
     
-    def __activity_web_hook(self, request):
+    def _activity_web_hook(self, request):
         activity = objectify.fromstring(request.body)
         self.__activity_receiver.activity_web_hook(activity)
         return Response('OK')

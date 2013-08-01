@@ -1,6 +1,6 @@
 import unittest2
 from mock import patch, call,MagicMock
-from sleuth import Sleuth
+from sleuth import Sleuth, Sleuth_Web_App
 
 
 def flatten_list(alist):
@@ -128,10 +128,19 @@ class Test_Story(unittest2.TestCase):
         pass
 
 
+@patch('sleuth.make_server')
 class Test_Sleuth_Web_App(unittest2.TestCase):
 
-    def __init__(self):
-        pass
-    
-    def __activity_web_hook(self):
-        pass
+    @patch('sleuth.objectify')
+    def test__activity_web_hook(self, objectify, make_server):
+        #setup
+        receiver = MagicMock()
+        request = MagicMock()
+        webapp = Sleuth_Web_App(receiver, 8080)
+        
+        # action
+        webapp._activity_web_hook(request)
+        
+        # confirm
+        objectify.fromstring.assert_called_once_with(request.body)
+        receiver.activity_web_hook.assert_called_once_with(objectify.fromstring.return_value)
