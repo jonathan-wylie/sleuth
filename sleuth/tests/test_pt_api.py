@@ -1,117 +1,49 @@
-import unittest2
-from mock import patch
+from mock import patch, MagicMock
 from sleuth import pt_api
-
-class StorySearch():
-    
-    def __init__(self, projectID, storyFilter=None):
-        self.projectID = projectID
-        self.storyFilter = storyFilter
-    
-    def filterByID(self, storyID):
-        """ Filter the stories by the story id
-        """
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + " id: %s" % storyID
-        else:
-            storyFilter = "id: %s" % storyID
-        
-        return StorySearch(self.projectID, storyFilter=storyFilter)
-
-    def filterByIDs(self, storyIDs):
-        """ Filter the stories by the story id
-        """
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + " id: %s" % ",".join(storyIDs)
-        else:
-            storyFilter = " id: %s" % ",".join(storyIDs)
-        
-        return StorySearch(self.projectID, storyFilter=storyFilter)
-    
-    def filterByRequester(self, requester):
-        """ Filter the stories by requester
-        
-        """
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + " requester: %s" % requester
-        else:
-            storyFilter = "requester: %s" % requester
-        
-        return StorySearch(self.projectID, storyFilter=storyFilter)
-
-    def filterIncludeDone(self):
-        """ Include stories completed in previous iterations
-        """
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + " includedone:true"
-        else:
-            storyFilter = "includedone:true"
-        
-        return StorySearch(self.projectID, storyFilter=storyFilter)
-    
-    def filterByModifiedDate(self, modifiedDate):
-        """ Include stories modified since modifiedDate
-        """
-        filterDate = str(modifiedDate)
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + '  modified_since:"%s"' % filterDate
-        else:
-            storyFilter = "modified_since:%s" % filterDate
-        
-        return StorySearch(self.projectID, storyFilter=storyFilter)
-
-    def filterByStates(self, states):
-        """ Include only stories in this state
-        """
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + "  state:%s" % ",".join(states)
-        else:
-            storyFilter = "state:%s" % ",".join(states)
-        
-        return StorySearch(self.projectID, storyFilter=storyFilter)
-    
-    def filterByLabel(self, label):
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + "  label:%s" % label
-        else:
-            storyFilter = "label:%s" % label
-        
-        return StorySearch(self.projectID, storyFilter=storyFilter)
-
-    def filterByType(self, storyType):
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + "  type:%s" % storyType
-        else:
-            storyFilter = "type:%s" % storyType
-        
-        return StorySearch(self.projectID, storyFilter=storyFilter)
-    
-    @property
-    def url(self):
-        """ Return the url to make the api call
-        """
-        return "%s/projects/%s/stories?%s" % (URL_API3, self.projectID, urllib.urlencode({"filter": self.storyFilter}))
-        
-    def get(self, token):
-        """ Actually get the stories
-        """
-        data = APICall(self.url, token)
-        return data
+import unittest2
 
 
 class Test_StorySearch(unittest2.TestCase):
-
+    
     def test_init(self):
         # setup
         project_id = MagicMock()
         story_filter = MagicMock()
         
         # action
-        story_search = StorySearch(project_id, story_filter=story_filter)
+        story_search = pt_api.StorySearch(project_id, story_filter=story_filter)
 
         # confirm
         self.assertEqual(story_search.project_id, project_id)
-        self.assertEqual(story_search.story_filter)
+        self.assertEqual(story_search.story_filter, story_filter)
+    
+    @patch('sleuth.pt_api.urllib')
+    def test_url(self, urllib):
+        # setup
+        project_id = 4
+        story_filter = MagicMock()
+        encoded_args = 'filter=encoded_args'
+        urllib.urlencode.return_value = encoded_args
+        
+        # action
+        story_search = pt_api.StorySearch(project_id, story_filter=story_filter)
+        
+        # confirm
+        self.assertEqual(story_search.url, 'https://www.pivotaltracker.com/services/v3/projects/%s/stories?%s' % (project_id, encoded_args))
+    
+    def test_get(self):
+        pass
+    
+    def test_filter_by_states(self):
+        # setup
+        project_id = 4
+        story_search = pt_api.StorySearch(project_id)
+        
+        # action
+        story_search = story_search.filter_by_states(['state1', 'state2'])
+        
+        # confirm
+        self.assertEqual(story_search.url, 'https://www.pivotaltracker.com/services/v3/projects/%s/stories?%s' % (project_id, 'filter=state%3Astate1%2Cstate2'))
 
 
 class Test_APICall(unittest2.TestCase):
@@ -134,7 +66,7 @@ class Test_APICall(unittest2.TestCase):
 
 
 @patch('sleuth.pt_api.APICall')
-class Test_getStories(unittest2.TestCase):
+class Test_get_stories(unittest2.TestCase):
     
     def setUp(self):
         self.token = 'xxxxxxxxxx'
@@ -217,13 +149,13 @@ class Test_getStories(unittest2.TestCase):
       </iteration>
     </iterations>"""
 
-    def test_getStories(self, APICall):
+    def test_get_stories(self, APICall):
         # setup
         block = 'backlog'
         APICall.return_value = self.iterations_reponse
         
         # action
-        stories = pt_api.getStories(self.project_id, block, self.token)
+        stories = pt_api.get_stories(self.project_id, block, self.token)
         
         # confirm
         self.assertEqual(stories[0][0].id, 0)
@@ -231,9 +163,9 @@ class Test_getStories(unittest2.TestCase):
         self.assertEqual(stories[1][0].id, 2)
         self.assertEqual(stories[1][1].id, 3)
 
-    def test_getStories_Unknown_Block(self, APICall):
+    def test_get_stories_Unknown_Block(self, APICall):
         # setup
         block = 'UNKOWN_BLOCK'
         
         # action / confirm
-        self.assertRaises(ValueError, pt_api.getStories, self.project_id, block, self.token)
+        self.assertRaises(ValueError, pt_api.get_stories, self.project_id, block, self.token)

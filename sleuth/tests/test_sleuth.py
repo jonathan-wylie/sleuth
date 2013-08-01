@@ -43,7 +43,7 @@ class Test_Sleuth(unittest2.TestCase):
         
     def test_init(self, Story, pt_api):
         # setup
-        pt_api.getStories.side_effect = [self.project1_current, self.project1_backlog, self.project2_current, self.project2_backlog]
+        pt_api.get_stories.side_effect = [self.project1_current, self.project1_backlog, self.project2_current, self.project2_backlog]
         
         # action
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
@@ -54,10 +54,10 @@ class Test_Sleuth(unittest2.TestCase):
         self.assertEqual(sleuth.track_blocks, self.track_blocks)
         
         expected_get_story_calls = [call(1, 'current', self.token, story_constructor=Story.create),
-                                 call(1, 'backlog', self.token, story_constructor=Story.create),
-                                 call(2, 'current', self.token, story_constructor=Story.create),
-                                 call(2, 'backlog', self.token, story_constructor=Story.create)]
-        self.assertListEqual(expected_get_story_calls, pt_api.getStories.call_args_list)
+                                    call(1, 'backlog', self.token, story_constructor=Story.create),
+                                    call(2, 'current', self.token, story_constructor=Story.create),
+                                    call(2, 'backlog', self.token, story_constructor=Story.create)]
+        self.assertListEqual(expected_get_story_calls, pt_api.get_stories.call_args_list)
         
         self.assertDictEqual(self.stories, sleuth.stories)
 

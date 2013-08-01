@@ -26,81 +26,14 @@ class StorySearch():
         self.project_id = project_id
         self.story_filter = story_filter
     
-    def filterByID(self, storyID):
-        """ Filter the stories by the story id
-        """
-        if self.story_filter is not None:
-            story_filter = self.story_filter + " id: %s" % storyID
-        else:
-            story_filter = "id: %s" % storyID
-        
-        return StorySearch(self.project_id, story_filter=story_filter)
-
-    def filterByIDs(self, storyIDs):
-        """ Filter the stories by the story id
-        """
-        if self.story_filter is not None:
-            story_filter = self.story_filter + " id: %s" % ",".join(storyIDs)
-        else:
-            story_filter = " id: %s" % ",".join(storyIDs)
-        
-        return StorySearch(self.project_id, story_filter=story_filter)
-    
-    def filterByRequester(self, requester):
-        """ Filter the stories by requester
-        
-        """
-        if self.story_filter is not None:
-            story_filter = self.story_filter + " requester: %s" % requester
-        else:
-            story_filter = "requester: %s" % requester
-        
-        return StorySearch(self.project_id, story_filter=story_filter)
-
-    def filterIncludeDone(self):
-        """ Include stories completed in previous iterations
-        """
-        if self.story_filter is not None:
-            story_filter = self.story_filter + " includedone:true"
-        else:
-            story_filter = "includedone:true"
-        
-        return StorySearch(self.project_id, story_filter=story_filter)
-    
-    def filterByModifiedDate(self, modifiedDate):
-        """ Include stories modified since modifiedDate
-        """
-        filterDate = str(modifiedDate)
-        if self.story_filter is not None:
-            story_filter = self.story_filter + '  modified_since:"%s"' % filterDate
-        else:
-            story_filter = "modified_since:%s" % filterDate
-        
-        return StorySearch(self.project_id, story_filter=story_filter)
-
-    def filterByStates(self, states):
+    def filter_by_states(self, states):
         """ Include only stories in this state
         """
+        states = ",".join(states)
         if self.story_filter is not None:
-            story_filter = self.story_filter + "  state:%s" % ",".join(states)
+            story_filter = self.story_filter + " state:%s" % states
         else:
-            story_filter = "state:%s" % ",".join(states)
-        
-        return StorySearch(self.project_id, story_filter=story_filter)
-    
-    def filterByLabel(self, label):
-        if self.story_filter is not None:
-            story_filter = self.story_filter + "  label:%s" % label
-        else:
-            story_filter = "label:%s" % label
-        
-        return StorySearch(self.project_id, story_filter=story_filter)
-
-    def filterByType(self, storyType):
-        if self.story_filter is not None:
-            story_filter = self.story_filter + "  type:%s" % storyType
-        else:
-            story_filter = "type:%s" % storyType
+            story_filter = "state:%s" % states
         
         return StorySearch(self.project_id, story_filter=story_filter)
     
@@ -117,7 +50,7 @@ class StorySearch():
         return data
 
 
-def getStories(project_id, block, token, story_constructor=lambda project_id, storyxml: storyxml):
+def get_stories(project_id, block, token, story_constructor=lambda project_id, storyxml: storyxml):
     ''' Return the stories for all the stories in the block eg current,
         for project with ID project_id
     '''
@@ -127,7 +60,7 @@ def getStories(project_id, block, token, story_constructor=lambda project_id, st
     stories = []
     if block == 'icebox':
         # icebox stories are "unscheduled", can't query directly for icebox stories, like we can with the other blocks
-        data = StorySearch(project_id).filterByStates(["unscheduled"]).get(token)
+        data = StorySearch(project_id).filter_by_states(["unscheduled"]).get(token)
         storiesxml = objectify.fromstring(data)
         stories.append([story_constructor(project_id, storyxml) for storyxml in storiesxml.iterchildren()])
     else:

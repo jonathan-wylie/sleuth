@@ -126,7 +126,7 @@ class Sleuth(object):
         self.track_blocks = track_blocks
         self.stories = {}
         self.update_lock = Lock()
-        self.load_stories_thread = Thread(target=self.loadStories())
+        self.load_stories_thread = Thread(target=self.load_stories())
         self.load_stories_thread.daemon = True
         self.load_stories_thread.start()
         self.activity_queue = []
@@ -134,13 +134,13 @@ class Sleuth(object):
         self.process_activities_thread.daemon = True
         self.process_activities_thread.start()
     
-    def loadStories(self):
+    def load_stories(self):
         """ Reload the stories from the trackers
         """
         with self.update_lock:
             for project_id in self.project_ids:
                 for track_block in self.track_blocks:
-                    self.stories.update(dict([(story.id, story) for story in _flatten_list(pt_api.getStories(project_id, track_block, self.token,
+                    self.stories.update(dict([(story.id, story) for story in _flatten_list(pt_api.get_stories(project_id, track_block, self.token,
                                                                                                              story_constructor=Story.create))]))
         print "Stories are loaded"
     
@@ -169,7 +169,6 @@ class Sleuth(object):
                             story = Story.create(activity.project_id, storyxml)
                             self.stories[story.id] = story
                             print('Create New Story %s' % storyxml.id)
-                            print lxml.etree.tostring(storyxml)
                     elif activity.event_type == 'story_delete':
                         for storyxml in activity.stories.iterchildren():
                             if storyxml.id in self.stories:
