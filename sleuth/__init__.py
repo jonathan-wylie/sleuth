@@ -31,35 +31,25 @@ class Story(object):
     '''The class represents a Pivotal Tracker User Story'''
 
     @staticmethod
+    def get_data_from_story_xml(storyxml):
+        data = {}
+
+        for attribute in ["story_type", "url", "estimate", "current_state", "description",
+                          "name", "requested_by", "owned_by", "created_at", "accepted_at", "labels"]:
+            if hasattr(storyxml, attribute):
+                data[attribute] = getattr(storyxml, attribute)
+            else:
+                data[attribute] = None
+
+        return data
+
+    @staticmethod
     def create(project_id, storyxml):
-        try:
-            labels = str(storyxml.labels).split(',')
-        except AttributeError:
-            labels = []
-        try:
-            accepted_at = storyxml.accepted_at
-        except AttributeError:
-            accepted_at = None
-        try:
-            owned_by = storyxml.owned_by
-        except AttributeError:
-            owned_by = None
-        try:
-            estimate = storyxml.estimate
-        except AttributeError:
-            estimate = None
-        try:
-            description = storyxml.description
-        except AttributeError:
-            description = None
-        try:
-            created_at = storyxml.created_at
-        except AttributeError:
-            created_at = None
+        data = Story.get_data_from_story_xml(storyxml)
         return Story(storyxml.id, project_id,
-                    storyxml.story_type, storyxml.url, estimate, storyxml.current_state,
-                    description, storyxml.name, storyxml.requested_by, owned_by,
-                    created_at=created_at, accepted_at=accepted_at, labels=labels)
+                    data['story_type'], data['url'], data['estimate'], data['current_state'],
+                    data['description'], data['name'], data['requested_by'], data['owned_by'],
+                    data['created_at'], data['accepted_at'], data['labels'])
        
     def __init__(self, story_id, project_id, story_type, url, estimate, current_state, description, name, requested_by, owned_by,
                  created_at=None, accepted_at=None, labels=[]):
@@ -75,27 +65,19 @@ class Story(object):
         self.owned_by = owned_by
         self.created_at = created_at
         self.accepted_at = accepted_at
-        self.labels = labels
+        if data['labels'] == None:
+            self.labels = []
+        else:
+            self.labels = str(storyxml.labels).split(',')
     
     def update(self, activity, storyxml):
         
-        for attribute in ["accepted_at", "owned_by", "estimate", "description", "created_at", "story_type",
-                          "url", "estimate", "current_state", "description", "name", "requested_by", "owned_by",
-                          "created_at", "accepted_at"]:
-            if hasattr(storyxml, attribute):
-                newValue = getattr(storyxml, attribute)
+        data = Story.get_data_from_story_xml(storyxml)
+        for attribute, new_value in data:
                 oldValue = getattr(self, attribute)
-                if newValue != oldValue:
+                if newValue is not None and newValue != oldValue:
                     print "%s changed from %s to %s" % (attribute, oldValue, newValue)
                     setattr(self, attribute, newValue)
-        
-        try:
-            labels = str(storyxml.labels).split(',')
-            if self.labels != labels:
-                print "labels changed from %s to %s" % (self.labels, labels)
-                self.labels = labels
-        except AttributeError:
-            labels = []
         
         try:
             project_id = activity.project_id

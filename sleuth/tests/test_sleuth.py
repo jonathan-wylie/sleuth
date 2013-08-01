@@ -1,6 +1,6 @@
 import unittest2
-from mock import patch, call,MagicMock
-from sleuth import Sleuth, Sleuth_Web_App
+from mock import patch, call, MagicMock, Mock
+from sleuth import Sleuth, Sleuth_Web_App, Story
 
 
 def flatten_list(alist):
@@ -112,20 +112,32 @@ class Test_Sleuth(unittest2.TestCase):
 
 class Test_Story(unittest2.TestCase):
 
-    def test_create(self):
-        pass
+    def test_get_data_from_story_xml(self):
+        # setup
+        storyxml = Mock(story_type='story_type', current_state='current_state', description='description',
+                        requested_by='requested_by', created_at='created_at', labels='labels')
+        del storyxml.url
+        del storyxml.estimate
+        del storyxml.name
+        del storyxml.owned_by
+        del storyxml.accepted_at
+        
+        # action
+        data = Story.get_data_from_story_xml(storyxml)
 
-    def test_create_from_load(self):
-        pass
+        # confirm
+        self.assertEqual(data['story_type'], storyxml.story_type)
+        self.assertEqual(data['current_state'], storyxml.current_state)
+        self.assertEqual(data['description'], storyxml.description)
+        self.assertEqual(data['requested_by'], storyxml.requested_by)
+        self.assertEqual(data['created_at'], storyxml.created_at)
+        self.assertEqual(data['labels'], storyxml.labels)
 
-    def test_init(self):
-        pass
-    
-    def test_update(self):
-        pass
-
-    def test_delete(self):
-        pass
+        self.assertEqual(data['url'], None)
+        self.assertEqual(data['estimate'], None)
+        self.assertEqual(data['name'], None)
+        self.assertEqual(data['owned_by'], None)
+        self.assertEqual(data['accepted_at'], None)
 
 
 @patch('sleuth.make_server')
