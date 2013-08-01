@@ -22,93 +22,93 @@ def APICall(url, token):
 
 class StorySearch():
     
-    def __init__(self, projectID, storyFilter=None):
-        self.projectID = projectID
-        self.storyFilter = storyFilter
+    def __init__(self, project_id, story_filter=None):
+        self.project_id = project_id
+        self.story_filter = story_filter
     
     def filterByID(self, storyID):
         """ Filter the stories by the story id
         """
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + " id: %s" % storyID
+        if self.story_filter is not None:
+            story_filter = self.story_filter + " id: %s" % storyID
         else:
-            storyFilter = "id: %s" % storyID
+            story_filter = "id: %s" % storyID
         
-        return StorySearch(self.projectID, storyFilter=storyFilter)
+        return StorySearch(self.project_id, story_filter=story_filter)
 
     def filterByIDs(self, storyIDs):
         """ Filter the stories by the story id
         """
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + " id: %s" % ",".join(storyIDs)
+        if self.story_filter is not None:
+            story_filter = self.story_filter + " id: %s" % ",".join(storyIDs)
         else:
-            storyFilter = " id: %s" % ",".join(storyIDs)
+            story_filter = " id: %s" % ",".join(storyIDs)
         
-        return StorySearch(self.projectID, storyFilter=storyFilter)
+        return StorySearch(self.project_id, story_filter=story_filter)
     
     def filterByRequester(self, requester):
         """ Filter the stories by requester
         
         """
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + " requester: %s" % requester
+        if self.story_filter is not None:
+            story_filter = self.story_filter + " requester: %s" % requester
         else:
-            storyFilter = "requester: %s" % requester
+            story_filter = "requester: %s" % requester
         
-        return StorySearch(self.projectID, storyFilter=storyFilter)
+        return StorySearch(self.project_id, story_filter=story_filter)
 
     def filterIncludeDone(self):
         """ Include stories completed in previous iterations
         """
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + " includedone:true"
+        if self.story_filter is not None:
+            story_filter = self.story_filter + " includedone:true"
         else:
-            storyFilter = "includedone:true"
+            story_filter = "includedone:true"
         
-        return StorySearch(self.projectID, storyFilter=storyFilter)
+        return StorySearch(self.project_id, story_filter=story_filter)
     
     def filterByModifiedDate(self, modifiedDate):
         """ Include stories modified since modifiedDate
         """
         filterDate = str(modifiedDate)
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + '  modified_since:"%s"' % filterDate
+        if self.story_filter is not None:
+            story_filter = self.story_filter + '  modified_since:"%s"' % filterDate
         else:
-            storyFilter = "modified_since:%s" % filterDate
+            story_filter = "modified_since:%s" % filterDate
         
-        return StorySearch(self.projectID, storyFilter=storyFilter)
+        return StorySearch(self.project_id, story_filter=story_filter)
 
     def filterByStates(self, states):
         """ Include only stories in this state
         """
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + "  state:%s" % ",".join(states)
+        if self.story_filter is not None:
+            story_filter = self.story_filter + "  state:%s" % ",".join(states)
         else:
-            storyFilter = "state:%s" % ",".join(states)
+            story_filter = "state:%s" % ",".join(states)
         
-        return StorySearch(self.projectID, storyFilter=storyFilter)
+        return StorySearch(self.project_id, story_filter=story_filter)
     
     def filterByLabel(self, label):
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + "  label:%s" % label
+        if self.story_filter is not None:
+            story_filter = self.story_filter + "  label:%s" % label
         else:
-            storyFilter = "label:%s" % label
+            story_filter = "label:%s" % label
         
-        return StorySearch(self.projectID, storyFilter=storyFilter)
+        return StorySearch(self.project_id, story_filter=story_filter)
 
     def filterByType(self, storyType):
-        if self.storyFilter is not None:
-            storyFilter = self.storyFilter + "  type:%s" % storyType
+        if self.story_filter is not None:
+            story_filter = self.story_filter + "  type:%s" % storyType
         else:
-            storyFilter = "type:%s" % storyType
+            story_filter = "type:%s" % storyType
         
-        return StorySearch(self.projectID, storyFilter=storyFilter)
+        return StorySearch(self.project_id, story_filter=story_filter)
     
     @property
     def url(self):
         """ Return the url to make the api call
         """
-        return "%s/projects/%s/stories?%s" % (URL_API3, self.projectID, urllib.urlencode({"filter": self.storyFilter}))
+        return "%s/projects/%s/stories?%s" % (URL_API3, self.project_id, urllib.urlencode({"filter": self.story_filter}))
         
     def get(self, token):
         """ Actually get the stories
