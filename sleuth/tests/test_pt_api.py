@@ -31,10 +31,24 @@ class Test_StorySearch(unittest2.TestCase):
         # confirm
         self.assertEqual(story_search.url, 'https://www.pivotaltracker.com/services/v3/projects/%s/stories?%s' % (project_id, encoded_args))
     
-    def test_get(self):
-        pass
+    @patch('sleuth.pt_api.APICall')
+    def test_get(self, APICall):
+        # setup
+        expected_data = "XML From Pivotal Tracker"
+        APICall.return_value = expected_data
+        project_id = 5
+        story_filter = 'some_filter'
+        token = '__token__'
+        story_search = pt_api.StorySearch(project_id, story_filter=story_filter)
+
+        # action
+        data = story_search.get(token)
+        
+        # confirm
+        self.assertEqual(expected_data, data)
+        APICall.assert_called_once_with(story_search.url, token)
     
-    def test_filter_by_states(self):
+    def test_filter_by_states_first_filter(self):
         # setup
         project_id = 4
         story_search = pt_api.StorySearch(project_id)
@@ -44,6 +58,17 @@ class Test_StorySearch(unittest2.TestCase):
         
         # confirm
         self.assertEqual(story_search.url, 'https://www.pivotaltracker.com/services/v3/projects/%s/stories?%s' % (project_id, 'filter=state%3Astate1%2Cstate2'))
+
+    def test_filter_by_states_second_filter(self):
+        # setup
+        project_id = 4
+        story_search = pt_api.StorySearch(project_id)
+        
+        # action
+        story_search = story_search.filter_by_states(['state1', 'state2']).filter_by_states(['state3', 'state4'])
+        
+        # confirm
+        self.assertEqual(story_search.url, 'https://www.pivotaltracker.com/services/v3/projects/%s/stories?%s' % (project_id, 'filter=state%3Astate1%2Cstate2+state%3Astate3%2Cstate4'))
 
 
 class Test_APICall(unittest2.TestCase):
@@ -148,6 +173,36 @@ class Test_get_stories(unittest2.TestCase):
         </stories>
       </iteration>
     </iterations>"""
+        self.ice_box_response = '''<stories type="array">
+          <story>
+            <id type="integer">0</id>
+            <project_id type=\"integer\">1</project_id>
+            <story_type>feature</story_type>
+            <url>$STORY_URL</url>
+            <estimate type="integer">2</estimate>
+            <current_state>accepted</current_state>
+            <description>Windoze Save Dialog thingy</description>
+            <name>The Save Dialog 1</name>
+            <requested_by>Dana Deer</requested_by>
+            <owned_by>Rob</owned_by>
+            <created_at type="datetime">2009/03/16 16:55:04 UTC</created_at>
+            <accepted_at type="datetime">2009/03/19 19:00:00 UTC</accepted_at>
+          </story>
+          <story>
+            <id type="integer">1</id>
+            <project_id type=\"integer\">1</project_id>
+            <story_type>feature</story_type>
+            <url>$STORY_URL</url>
+            <estimate type="integer">2</estimate>
+            <current_state>accepted</current_state>
+            <description>Windoze Save Dialog thingy</description>
+            <name>The Save Dialog 2</name>
+            <requested_by>Dana Deer</requested_by>
+            <owned_by>Rob</owned_by>
+            <created_at type="datetime">2009/03/16 16:55:04 UTC</created_at>
+            <accepted_at type="datetime">2009/03/19 19:00:00 UTC</accepted_at>
+          </story>
+        </stories>'''
 
     def test_get_stories(self, APICall):
         # setup
@@ -169,3 +224,17 @@ class Test_get_stories(unittest2.TestCase):
         
         # action / confirm
         self.assertRaises(ValueError, pt_api.get_stories, self.project_id, block, self.token)
+        
+    def test_get_stories_icebox(self, APICall):
+        # setup
+        block = 'icebox'
+        APICall.return_value = self.ice_box_response
+        
+        # action
+        stories = pt_api.get_stories(self.project_id, block, self.token)
+        
+        # confirm
+        print stories[0][0].id
+        print stories[0][1].id
+        self.assertEqual(stories[0][0].id, 0)
+        self.assertEqual(stories[0][1].id, 1)

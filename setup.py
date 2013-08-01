@@ -1,9 +1,4 @@
-# Need pyramid
-# Need lxml
-# Need argparse
 # yum install libxslt-devel - for lxml
-# need nose
-# need unittest2
 
 from setuptools import setup, find_packages
 import os
@@ -21,7 +16,8 @@ requires = [
     "argparse",
     "nose",
     "unittest2",
-    "mock"
+    "mock",
+    "coverage"
 ]
 
 setup(
