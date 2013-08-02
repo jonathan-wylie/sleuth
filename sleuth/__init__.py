@@ -65,19 +65,19 @@ class Story(object):
         self.owned_by = owned_by
         self.created_at = created_at
         self.accepted_at = accepted_at
-        if data['labels'] == None:
+        if labels == None:
             self.labels = []
         else:
-            self.labels = str(storyxml.labels).split(',')
+            self.labels = labels.split(',')
     
     def update(self, activity, storyxml):
         
         data = Story.get_data_from_story_xml(storyxml)
-        for attribute, new_value in data:
+        for attribute, new_value in data.items():
                 oldValue = getattr(self, attribute)
-                if newValue is not None and newValue != oldValue:
-                    print "%s changed from %s to %s" % (attribute, oldValue, newValue)
-                    setattr(self, attribute, newValue)
+                if new_value is not None and new_value != oldValue:
+                    print "%s changed from %s to %s" % (attribute, oldValue, new_value)
+                    setattr(self, attribute, new_value)
         
         try:
             project_id = activity.project_id
