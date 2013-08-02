@@ -27,25 +27,25 @@ class StorySearch():
         self.story_filter = story_filter
     
     def filter_by_states(self, states):
-        """ Include only stories in this state
-        """
-        states = ",".join(states)
+        ''' Include only stories in this state
+        '''
+        states = ','.join(states)
         if self.story_filter is not None:
-            story_filter = self.story_filter + " state:%s" % states
+            story_filter = self.story_filter + ' state:%s' % states
         else:
-            story_filter = "state:%s" % states
+            story_filter = 'state:%s' % states
         
         return StorySearch(self.project_id, story_filter=story_filter)
     
     @property
     def url(self):
-        """ Return the url to make the api call
-        """
-        return "%s/projects/%s/stories?%s" % (URL_API3, self.project_id, urllib.urlencode({"filter": self.story_filter}))
+        ''' Return the url to make the api call
+        '''
+        return '%s/projects/%s/stories?%s' % (URL_API3, self.project_id, urllib.urlencode({'filter': self.story_filter}))
         
     def get(self, token):
-        """ Actually get the stories
-        """
+        ''' Actually get the stories
+        '''
         data = APICall(self.url, token)
         return data
 
@@ -55,12 +55,12 @@ def get_stories(project_id, block, token, story_constructor=lambda project_id, s
         for project with ID project_id
     '''
     if block not in BLOCKS:
-        raise ValueError("The block value must be in %s, not %s" % (BLOCKS, block))
+        raise ValueError('The block value must be in %s, not %s' % (BLOCKS, block))
     
     stories = []
     if block == 'icebox':
-        # icebox stories are "unscheduled", can't query directly for icebox stories, like we can with the other blocks
-        data = StorySearch(project_id).filter_by_states(["unscheduled"]).get(token)
+        # icebox stories are 'unscheduled', can't query directly for icebox stories, like we can with the other blocks
+        data = StorySearch(project_id).filter_by_states(['unscheduled']).get(token)
         storiesxml = objectify.fromstring(data)
         stories.append([story_constructor(project_id, storyxml) for storyxml in storiesxml.iterchildren()])
     else:

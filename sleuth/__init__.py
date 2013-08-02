@@ -34,8 +34,8 @@ class Story(object):
     def get_data_from_story_xml(storyxml):
         data = {}
 
-        for attribute in ["story_type", "url", "estimate", "current_state", "description",
-                          "name", "requested_by", "owned_by", "created_at", "accepted_at", "labels"]:
+        for attribute in ['story_type', 'url', 'estimate', 'current_state', 'description',
+                          'name', 'requested_by', 'owned_by', 'created_at', 'accepted_at', 'labels']:
             if hasattr(storyxml, attribute):
                 data[attribute] = getattr(storyxml, attribute)
             else:
@@ -49,7 +49,7 @@ class Story(object):
         return Story(storyxml.id, project_id,
                     data['story_type'], data['url'], data['estimate'], data['current_state'],
                     data['description'], data['name'], data['requested_by'], data['owned_by'],
-                    data['created_at'], data['accepted_at'], data['labels'])
+                    created_at=data['created_at'], accepted_at=data['accepted_at'], labels=data['labels'])
        
     def __init__(self, story_id, project_id, story_type, url, estimate, current_state, description, name, requested_by, owned_by,
                  created_at=None, accepted_at=None, labels=[]):
@@ -72,20 +72,19 @@ class Story(object):
     
     def update(self, activity, storyxml):
         
+        # Update story attributes
         data = Story.get_data_from_story_xml(storyxml)
         for attribute, new_value in data.items():
                 oldValue = getattr(self, attribute)
                 if new_value is not None and new_value != oldValue:
-                    print "%s changed from %s to %s" % (attribute, oldValue, new_value)
+                    print '%s changed from %s to %s' % (attribute, oldValue, new_value)
                     setattr(self, attribute, new_value)
         
-        try:
-            project_id = activity.project_id
-            if self.project_id != project_id:
-                print "project_id changed from %s to %s" % (self.project_id, project_id)
-                self.project_id = project_id
-        except AttributeError:
-            project_id = None
+        # Update the project_id if needed
+        project_id = activity.project_id
+        if self.project_id != project_id:
+            print 'project_id changed from %s to %s' % (self.project_id, project_id)
+            self.project_id = project_id
 
     def delete(self):
         pass
@@ -117,58 +116,50 @@ class Sleuth(object):
         self.process_activities_thread.start()
     
     def load_stories(self):
-        """ Reload the stories from the trackers
-        """
+        ''' Reload the stories from the trackers
+        '''
         with self.update_lock:
             for project_id in self.project_ids:
                 for track_block in self.track_blocks:
                     self.stories.update(dict([(story.id, story) for story in _flatten_list(pt_api.get_stories(project_id, track_block, self.token,
                                                                                                              story_constructor=Story.create))]))
-        print "Stories are loaded"
+        print 'Stories are loaded'
     
     def activity_web_hook(self, activity):
-        """ Add the story changes to a queue to be processed
-        """
+        ''' Add the story changes to a queue to be processed
+        '''
         self.activity_queue.append(activity)
         
     def _process_activities(self):
-        """ To be run in a thread, process all the activities in the queue
-        """
+        ''' To be run in a thread, process all the activities in the queue
+        '''
         while True:
             if self.activity_queue:
                 activity = self.activity_queue.pop()
                 with self.update_lock:
-                    if activity.event_type == 'story_update':
+                    if activity.event_type in ['story_update', 'move_into_project']:
                         for storyxml in activity.stories.iterchildren():
                             if storyxml.id in self.stories:
                                 self.stories[storyxml.id].update(activity, storyxml)
-                                print('Story update %s' % storyxml.id)
+                                print('%s: %s' % (activity.event_type, storyxml.id))
                             else:
                                 print('Story unknown: %s' % storyxml.id)
                                 print lxml.etree.tostring(storyxml)
-                    elif activity.event_type == 'story_create':
+                    elif activity.event_type in 'story_create':
                         for storyxml in activity.stories.iterchildren():
                             story = Story.create(activity.project_id, storyxml)
                             self.stories[story.id] = story
-                            print('Create New Story %s' % storyxml.id)
+                            print('%s: %s' % (activity.event_type, storyxml.id))
                     elif activity.event_type == 'story_delete':
                         for storyxml in activity.stories.iterchildren():
                             if storyxml.id in self.stories:
                                 self.stories[storyxml.id].delete()
                                 del self.stories[storyxml.id]
-                                print('Story delete %s' % storyxml.id)
+                                print('%s: %s' % (activity.event_type, storyxml.id))
                             else:
                                 print('Story unknown: %s' % storyxml.id)
                                 print lxml.etree.tostring(storyxml)
-                    elif activity.event_type == 'move_into_project':
-                        for storyxml in activity.stories.iterchildren():
-                            if storyxml.id in self.stories:
-                                self.stories[storyxml.id].update(activity, storyxml)
-                                print('Story move into project %s' % storyxml.id)
-                            else:
-                                print('Story unknown: %s' % storyxml.id)
-                                print lxml.etree.tostring(storyxml)
-                    elif activity.event_type == 'move_from_project':
+                    elif activity.event_type in ['move_from_project']:
                         pass
                         # because all the projects are mixed together move_from_project event_type can be ignored
                     else:

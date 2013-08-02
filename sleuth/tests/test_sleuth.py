@@ -1,6 +1,6 @@
-import unittest2
 from mock import patch, call, MagicMock, Mock
 from sleuth import Sleuth, Sleuth_Web_App, Story
+import unittest2
 
 
 def flatten_list(alist):
@@ -74,8 +74,23 @@ class Test_Sleuth(unittest2.TestCase):
         
         #confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        sleuth.stories[15].update.assert_called_with(activity, updatedStory)
-         
+        sleuth.stories[15].update.assert_called_once_with(activity, updatedStory)
+
+    def test_activity_web_hook_move_into_project(self, Story, pt_api):
+        # setup
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth.stories = self.stories
+        updatedStory = MagicMock(id=15)
+        activity = MagicMock(event_type='move_into_project')
+        activity.stories.iterchildren.return_value = [updatedStory]
+        
+        # action
+        sleuth.activity_web_hook(activity)
+        
+        #confirm
+        self.wait_for_activity_to_be_processed(sleuth)
+        sleuth.stories[15].update.assert_called_once_with(activity, updatedStory)
+
     def test_activity_web_hook_create(self, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
@@ -138,6 +153,141 @@ class Test_Story(unittest2.TestCase):
         self.assertEqual(data['name'], None)
         self.assertEqual(data['owned_by'], None)
         self.assertEqual(data['accepted_at'], None)
+
+    def test_create_with_labels(self):
+        # setup
+        storyxml = MagicMock(story_type='story_type', current_state='current_state', description='description',
+                        requested_by='requested_by', created_at='created_at', labels='labels')
+        del storyxml.url
+        del storyxml.estimate
+        del storyxml.name
+        del storyxml.owned_by
+        del storyxml.accepted_at
+        
+        project_id = 1
+        
+        # action
+        story = Story.create(project_id, storyxml)
+        
+        # confirm
+        self.assertEqual(story.story_type, storyxml.story_type)
+        self.assertEqual(story.current_state, storyxml.current_state)
+        self.assertEqual(story.description, storyxml.description)
+        self.assertEqual(story.requested_by, storyxml.requested_by)
+        self.assertEqual(story.created_at, storyxml.created_at)
+        self.assertEqual(story.labels, storyxml.labels.split(','))
+
+        self.assertEqual(story.url, None)
+        self.assertEqual(story.estimate, None)
+        self.assertEqual(story.name, None)
+        self.assertEqual(story.owned_by, None)
+        self.assertEqual(story.accepted_at, None)
+
+    def test_create_without_labels(self):
+        # setup
+        storyxml = MagicMock(story_type='story_type', current_state='current_state', description='description',
+                        requested_by='requested_by', created_at='created_at')
+        del storyxml.url
+        del storyxml.estimate
+        del storyxml.name
+        del storyxml.owned_by
+        del storyxml.accepted_at
+        del storyxml.labels
+        
+        project_id = 1
+        
+        # action
+        story = Story.create(project_id, storyxml)
+        
+        # confirm
+        self.assertEqual(story.story_type, storyxml.story_type)
+        self.assertEqual(story.current_state, storyxml.current_state)
+        self.assertEqual(story.description, storyxml.description)
+        self.assertEqual(story.requested_by, storyxml.requested_by)
+        self.assertEqual(story.created_at, storyxml.created_at)
+        self.assertEqual(story.labels, [])
+
+        self.assertEqual(story.url, None)
+        self.assertEqual(story.estimate, None)
+        self.assertEqual(story.name, None)
+        self.assertEqual(story.owned_by, None)
+        self.assertEqual(story.accepted_at, None)
+
+    def test_update_story_details(self):
+        # setup
+        storyxml = Mock(story_type='story_type', current_state='current_state', description='description',
+                        requested_by='requested_by', created_at='created_at')
+        del storyxml.url
+        del storyxml.estimate
+        del storyxml.name
+        del storyxml.owned_by
+        del storyxml.accepted_at
+        del storyxml.labels
+        project_id = 1
+        story = Story.create(project_id, storyxml)
+        activity = MagicMock(project_id=project_id)
+
+        update_storyxml = MagicMock(story_type='different_story_type', description='new description')
+        del update_storyxml.url
+        del update_storyxml.estimate
+        del update_storyxml.name
+        del update_storyxml.owned_by
+        del update_storyxml.accepted_at
+        del update_storyxml.labels
+        del update_storyxml.current_state
+        del update_storyxml.requested_by
+        del update_storyxml.created_at
+        
+        # action
+        story.update(activity, update_storyxml)
+        
+        # confirm
+        self.assertEqual(story.story_type, update_storyxml.story_type)
+        self.assertEqual(story.current_state, storyxml.current_state)
+        self.assertEqual(story.description, update_storyxml.description)
+        self.assertEqual(story.requested_by, storyxml.requested_by)
+        self.assertEqual(story.created_at, storyxml.created_at)
+        self.assertEqual(story.labels, [])
+
+        self.assertEqual(story.url, None)
+        self.assertEqual(story.estimate, None)
+        self.assertEqual(story.name, None)
+        self.assertEqual(story.owned_by, None)
+        self.assertEqual(story.accepted_at, None)
+    
+    def test_update_story_project(self):
+        # setup
+        storyxml = MagicMock(story_type='story_type', current_state='current_state', description='description',
+                        requested_by='requested_by', created_at='created_at')
+        del storyxml.url
+        del storyxml.estimate
+        del storyxml.name
+        del storyxml.owned_by
+        del storyxml.accepted_at
+        del storyxml.labels
+        project_id = 1
+        new_project_id = 2
+        story = Story.create(project_id, storyxml)
+        activity = MagicMock(project_id=new_project_id)
+
+        update_storyxml = MagicMock()
+        del update_storyxml.url
+        del update_storyxml.estimate
+        del update_storyxml.name
+        del update_storyxml.owned_by
+        del update_storyxml.accepted_at
+        del update_storyxml.labels
+        del update_storyxml.current_state
+        del update_storyxml.requested_by
+        del update_storyxml.created_at
+        del update_storyxml.story_type
+        del update_storyxml.description
+        
+        # action
+        story.update(activity, update_storyxml)
+        
+        # confirm
+        self.assertEqual(story.project_id, new_project_id)
 
 
 @patch('sleuth.make_server')

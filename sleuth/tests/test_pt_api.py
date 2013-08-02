@@ -34,7 +34,7 @@ class Test_StorySearch(unittest2.TestCase):
     @patch('sleuth.pt_api.APICall')
     def test_get(self, APICall):
         # setup
-        expected_data = "XML From Pivotal Tracker"
+        expected_data = 'XML From Pivotal Tracker'
         APICall.return_value = expected_data
         project_id = 5
         story_filter = 'some_filter'
@@ -96,7 +96,7 @@ class Test_get_stories(unittest2.TestCase):
     def setUp(self):
         self.token = 'xxxxxxxxxx'
         self.project_id = 1
-        self.iterations_reponse = """<?xml version="1.0" encoding="UTF-8"?>
+        self.iterations_reponse = '''<?xml version="1.0" encoding="UTF-8"?>
     <iterations type="array">
       <iteration>
         <id type="integer">1</id>
@@ -172,7 +172,7 @@ class Test_get_stories(unittest2.TestCase):
           </story>
         </stories>
       </iteration>
-    </iterations>"""
+    </iterations>'''
         self.ice_box_response = '''<stories type="array">
           <story>
             <id type="integer">0</id>
