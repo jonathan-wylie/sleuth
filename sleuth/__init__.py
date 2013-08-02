@@ -68,7 +68,7 @@ class Story(object):
         if labels == None:
             self.labels = []
         else:
-            self.labels = labels.split(',')
+            self.labels = str(labels).split(',')
     
     def update(self, activity, storyxml):
         
