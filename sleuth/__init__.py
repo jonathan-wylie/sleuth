@@ -145,7 +145,7 @@ class Sleuth(object):
                             else:
                                 print('Story unknown: %s' % storyxml.id)
                                 print lxml.etree.tostring(storyxml)
-                    elif activity.event_type in 'story_create':
+                    elif activity.event_type == 'story_create':
                         for storyxml in activity.stories.iterchildren():
                             story = Story.create(activity.project_id, storyxml)
                             self.stories[story.id] = story
