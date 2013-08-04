@@ -1,5 +1,5 @@
 from mock import patch, call, MagicMock, Mock
-from sleuth import Sleuth, Sleuth_Web_App, Story
+from sleuth import Sleuth, Story
 import unittest2
 
 
@@ -15,6 +15,7 @@ def flatten_list(alist):
 @patch('sleuth.pt_api')
 @patch('sleuth.Story')
 @patch('sleuth.lxml.etree.tostring', MagicMock())
+@patch('sleuth.Sleuth.collect_task_updates', MagicMock())
 class Test_Sleuth(unittest2.TestCase):
     
     def setUp(self):
@@ -136,7 +137,8 @@ class Test_Story(unittest2.TestCase):
         del storyxml.name
         del storyxml.owned_by
         del storyxml.accepted_at
-        
+        del storyxml.notes
+        del storyxml.tasks
         # action
         data = Story.get_data_from_story_xml(storyxml)
 
@@ -163,7 +165,9 @@ class Test_Story(unittest2.TestCase):
         del storyxml.name
         del storyxml.owned_by
         del storyxml.accepted_at
-        
+        del storyxml.notes
+        del storyxml.tasks
+
         project_id = 1
         
         # action
@@ -193,7 +197,9 @@ class Test_Story(unittest2.TestCase):
         del storyxml.owned_by
         del storyxml.accepted_at
         del storyxml.labels
-        
+        del storyxml.notes
+        del storyxml.tasks
+
         project_id = 1
         
         # action
@@ -223,6 +229,9 @@ class Test_Story(unittest2.TestCase):
         del storyxml.owned_by
         del storyxml.accepted_at
         del storyxml.labels
+        del storyxml.notes
+        del storyxml.tasks
+
         project_id = 1
         story = Story.create(project_id, storyxml)
         activity = MagicMock(project_id=project_id)
@@ -288,21 +297,3 @@ class Test_Story(unittest2.TestCase):
         
         # confirm
         self.assertEqual(story.project_id, new_project_id)
-
-
-@patch('sleuth.make_server')
-class Test_Sleuth_Web_App(unittest2.TestCase):
-
-    @patch('sleuth.objectify')
-    def test__activity_web_hook(self, objectify, make_server):
-        #setup
-        receiver = MagicMock()
-        request = MagicMock()
-        webapp = Sleuth_Web_App(receiver, 8080)
-        
-        # action
-        webapp._activity_web_hook(request)
-        
-        # confirm
-        objectify.fromstring.assert_called_once_with(request.body)
-        receiver.activity_web_hook.assert_called_once_with(objectify.fromstring.return_value)

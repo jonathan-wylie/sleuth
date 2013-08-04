@@ -2,10 +2,12 @@ from lxml import objectify
 import logging
 import subprocess
 import urllib
+import time
 
 logger = logging.getLogger(__name__)
 
 URL_API3 = 'https://www.pivotaltracker.com/services/v3'
+URL_API4 = 'https://www.pivotaltracker.com/services/v4'
 BLOCKS = ['current', 'icebox', 'backlog', 'done']
 
 
@@ -14,9 +16,9 @@ class PT_APIException(Exception):
 
 
 def APICall(url, token):
-    child = subprocess.Popen("curl -H 'X-TrackerToken: %s' -X GET %s" % (token, url), shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    child = subprocess.Popen("curl -H 'X-TrackerToken: %s' -X GET %s" % (token, url),
+                             shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     (stdoutdata, _) = child.communicate()
-            
     return stdoutdata
 
 
@@ -71,3 +73,22 @@ def get_stories(project_id, block, token, story_constructor=lambda project_id, s
             stories.append([story_constructor(project_id, storyxml) for storyxml in iteration.stories.iterchildren()])
         
     return stories
+
+
+def get_project_activities(project_id, since, token):
+    # 2010/3/15%0000:00:00%20PST
+    since = since.strftime('%Y/') +str(since.month) + since.strftime('/%d') + '%00' + since.strftime('%H:%M:%S') + '%20' + time.tzname[0]
+    data = APICall('%s/projects/%s/activities?occurred_since_date=%s' % (URL_API4, project_id, since),
+                   token)
+    #print data
+    activitiesxml = objectify.fromstring(data)
+    return activitiesxml
+
+
+def get_project_activities_v3(project_id, since, token):
+    # 2010/3/15%0000:00:00%20PST
+    since = since.strftime('%Y/') +str(since.month) + since.strftime('/%d') + '%00' + since.strftime('%H:%M:%S') + '%20' + time.tzname[0]
+    data = APICall('%s/projects/%s/activities?occurred_since_date=%s' % (URL_API3, project_id, since),
+                   token)
+    activitiesxml = objectify.fromstring(data)
+    return activitiesxml
