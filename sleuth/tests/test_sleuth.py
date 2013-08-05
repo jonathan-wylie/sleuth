@@ -108,22 +108,22 @@ class Test_Sleuth(unittest2.TestCase):
         Story.create.assert_called_once_with(activity.project_id, newStory)
         self.assertTrue(sleuth.stories[realNewStory.id] == realNewStory)
 
-    # def test_activity_web_hook_delete(self, Story, pt_api):
-    #     # setup
-    #     sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
-    #     sleuth.stories = self.stories
-    #     deletedStory = MagicMock(id=15)
-    #     activity = MagicMock(event_type='story_delete')
-    #     realDeletedStory = sleuth.stories[deletedStory.id]
-    #     activity.stories.iterchildren.return_value = [deletedStory]
+    def test_activity_web_hook_delete(self, Story, pt_api):
+        # setup
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth.stories = self.stories
+        deletedStory = MagicMock(id=15)
+        activity = MagicMock(event_type='story_delete')
+        realDeletedStory = sleuth.stories[deletedStory.id]
+        activity.stories.iterchildren.return_value = [deletedStory]
 
-    #     # action
-    #     sleuth.activity_web_hook(activity)
+        # action
+        sleuth.activity_web_hook(activity)
 
-    #     # confirm
-    #     self.wait_for_activity_to_be_processed(sleuth)
-    #     self.assertTrue(deletedStory.id not in sleuth.stories)
-    #     self.assertTrue(realDeletedStory.delete.called)
+        # confirm
+        self.wait_for_activity_to_be_processed(sleuth)
+        self.assertTrue(deletedStory.id not in sleuth.stories)
+        self.assertTrue(realDeletedStory.delete.called)
 
 
 class Test_Story(unittest2.TestCase):
