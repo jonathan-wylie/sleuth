@@ -80,7 +80,6 @@ def get_project_activities(project_id, since, token):
     since = since.strftime('%Y/') + str(since.month) + since.strftime('/%d') + '%00' + since.strftime('%H:%M:%S') + '%20' + time.tzname[0]
     data = APICall('%s/projects/%s/activities?occurred_since_date=%s' % (URL_API4, project_id, since),
                    token)
-    #print data
     activitiesxml = objectify.fromstring(data)
     return activitiesxml
 
