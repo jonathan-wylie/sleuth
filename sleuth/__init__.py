@@ -1,18 +1,20 @@
 from lxml import objectify
 from pyramid.config import Configurator
 from pyramid.response import Response
+from threading import Lock
 from wsgiref.simple_server import make_server
+import datetime
 import lxml
 import pt_api
-from threading import Lock, Thread
+import threading
 import time
 
 
 class Note(object):
     """Represent a note for a story"""
 
-    def __init__(self, id, text, author, noted_at):
-        self.id = id
+    def __init__(self, note_id, text, author, noted_at):
+        self.id = note_id
         self.text = text
         self.author = author
         self.noted_at = noted_at
@@ -22,8 +24,8 @@ class Task(object):
     """ Represent a task for a story
     """
 
-    def __init__(self, id, description, created_at, position=None, complete=False):
-        self.id = id
+    def __init__(self, task_id, description, created_at, position=None, complete=False):
+        self.id = task_id
         self.description = description
         self.position = position
         self.complete = complete
@@ -53,7 +55,7 @@ class Story(object):
         tasks = {}
         if hasattr(storyxml, 'tasks'):
             for taskxml in storyxml.tasks.iterchildren():
-                task = Task(taskxml.id, taskxml.description, taskxml.created_at, position=taskxml.position, complete = taskxml.complete)
+                task = Task(taskxml.id, taskxml.description, taskxml.created_at, position=taskxml.position, complete=taskxml.complete)
                 tasks[task.id] = task
         else:
             tasks = None
@@ -132,11 +134,11 @@ class Sleuth(object):
         self.track_blocks = track_blocks
         self.stories = {}
         self.update_lock = Lock()
-        self.load_stories_thread = Thread(target=self.load_stories())
+        self.load_stories_thread = threading.Thread(target=self.load_stories())
         self.load_stories_thread.daemon = True
         self.load_stories_thread.start()
         self.activity_queue = []
-        self.process_activities_thread = Thread(target=self._process_activities)
+        self.process_activities_thread = threading.Thread(target=self._process_activities)
         self.process_activities_thread.daemon = True
         self.process_activities_thread.start()
         self.collect_task_updates()
@@ -272,8 +274,6 @@ class Sleuth(object):
                 time.sleep(1)
 
     def collect_task_updates(self):
-        import threading
-        import datetime
         def get_activities():
             lastCheck = datetime.datetime.now()
             if time.daylight:

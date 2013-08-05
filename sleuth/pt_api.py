@@ -77,7 +77,7 @@ def get_stories(project_id, block, token, story_constructor=lambda project_id, s
 
 def get_project_activities(project_id, since, token):
     # 2010/3/15%0000:00:00%20PST
-    since = since.strftime('%Y/') +str(since.month) + since.strftime('/%d') + '%00' + since.strftime('%H:%M:%S') + '%20' + time.tzname[0]
+    since = since.strftime('%Y/') + str(since.month) + since.strftime('/%d') + '%00' + since.strftime('%H:%M:%S') + '%20' + time.tzname[0]
     data = APICall('%s/projects/%s/activities?occurred_since_date=%s' % (URL_API4, project_id, since),
                    token)
     #print data
@@ -87,7 +87,7 @@ def get_project_activities(project_id, since, token):
 
 def get_project_activities_v3(project_id, since, token):
     # 2010/3/15%0000:00:00%20PST
-    since = since.strftime('%Y/') +str(since.month) + since.strftime('/%d') + '%00' + since.strftime('%H:%M:%S') + '%20' + time.tzname[0]
+    since = since.strftime('%Y/') + str(since.month) + since.strftime('/%d') + '%00' + since.strftime('%H:%M:%S') + '%20' + time.tzname[0]
     data = APICall('%s/projects/%s/activities?occurred_since_date=%s' % (URL_API3, project_id, since),
                    token)
     activitiesxml = objectify.fromstring(data)
