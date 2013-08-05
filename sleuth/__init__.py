@@ -1,10 +1,5 @@
-from lxml import objectify
-from pyramid.config import Configurator
-from pyramid.response import Response
 from threading import Lock
-from wsgiref.simple_server import make_server
 import datetime
-import lxml
 import pt_api
 import threading
 import time
@@ -35,6 +30,17 @@ class Task(object):
         self.position = position
         self.complete = complete
         self.created_at = created_at
+
+    def update(self, taskxml):
+        if hasattr(taskxml, 'description'):
+            logger.info("Changed task description from %s to %s" % (self.description, taskxml.description))
+            self.description = taskxml.description
+        if hasattr(taskxml, 'complete'):
+            logger.info("Changed task completion from %s to %s" % (self.complete, taskxml.complete))
+            self.complete = taskxml.complete
+        if hasattr(taskxml, 'position'):
+            logger.info("Changed task position from %s to %s" % (self.position, taskxml.position))
+            self.position = taskxml.position
 
 
 class Story(object):
@@ -100,19 +106,19 @@ class Story(object):
             self.tasks = tasks
 
     def update(self, activity, storyxml):
-        
+
         # Update story attributes
         data = Story.get_data_from_story_xml(storyxml)
         for attribute, new_value in data.items():
             oldValue = getattr(self, attribute)
             if new_value is not None and new_value != oldValue:
-                logger.info('%s changed from %s to %s' % (attribute, oldValue, new_value))
+                logger.info("Changed story %s from %s to %s" % (attribute, oldValue, new_value))
                 setattr(self, attribute, new_value)
-        
+
         # Update the project_id if needed
         project_id = activity.project_id
         if self.project_id != project_id:
-            logger.info('project_id changed from %s to %s' % (self.project_id, project_id))
+            logger.info('Changed story project_id changed from %s to %s' % (self.project_id, project_id))
             self.project_id = project_id
 
     def delete(self):
@@ -144,7 +150,7 @@ class Sleuth(object):
         self.process_activities_thread.daemon = True
         self.process_activities_thread.start()
         self.collect_task_updates()
-    
+
     def load_stories(self):
         ''' Reload the stories from the trackers
         '''
@@ -154,23 +160,23 @@ class Sleuth(object):
                     self.stories.update(dict([(story.id, story) for story in _flatten_list(pt_api.get_stories(project_id, track_block, self.token,
                                                                                                              story_constructor=Story.create))]))
         logger.info('Stories are loaded')
-    
+
     def activity_web_hook(self, activity):
         ''' Add the story changes to a queue to be processed
         '''
         self.activity_queue.append(activity)
-        
+
     def _process_activities(self):
         ''' To be run in a thread, process all the activities in the queue
         '''
         def log_unkown_story(storyxml):
             logger.warning('Story unknown: %s' % storyxml.id)
             if __debug__:
-                logger.debug(lxml.etree.tostring(storyxml))
-        
+                logger.debug(pt_api.to_str(storyxml))
+
         while True:
             if self.activity_queue:
-                activity = self.activity_queue.pop()
+                activity = self.activity_queue[0]
                 with self.update_lock:
                     logger.info('--------------------')
                     logger.info('')
@@ -182,7 +188,10 @@ class Sleuth(object):
                             if storyxml.id in self.stories:
                                 story = self.stories[storyxml.id]
                                 logger.info('%s: %s' % (activity.event_type, storyxml.id))
+                                logger.info("UPDATING")
                                 story.update(activity, storyxml)
+                                logger.info("UPDATED")
+                                logger.info("<Updated Story> %s:%s" % (story.id, story.description))
                             else:
                                 log_unkown_story(storyxml)
 
@@ -190,7 +199,9 @@ class Sleuth(object):
                         for storyxml in activity.stories.iterchildren():
                             logger.info('%s: %s' % (activity.event_type, storyxml.id))
                             story = Story.create(activity.project_id, storyxml)
+                            logger.info("CREATE STORY")
                             self.stories[story.id] = story
+                            logger.info("ADD STORY")
                             logger.info("<Added Story> %s:%s" % (story.id, story.description))
 
                     elif activity.event_type == 'story_delete':
@@ -212,7 +223,7 @@ class Sleuth(object):
                                 for notexml in storyxml.notes.iterchildren():
                                     note = Note(notexml.id, notexml['text'].text, activity.author, activity.occurred_at)
                                     story.notes[note.id] = note
-                                    logger.info("<Added Note> %s:%s" % (note.id, note.text))
+                                    logger.info("<Created Note> %s:%s" % (note.id, note.text))
                             else:
                                 log_unkown_story(storyxml)
 
@@ -227,7 +238,7 @@ class Sleuth(object):
                                     created_at = getattr(taskxml, 'created_at', None)
                                     task = Task(taskxml.id, taskxml.description, created_at, position=position, complete=complete)
                                     story.tasks[task.id] = task
-                                    logger.info("<Added Task> %s:%s" % (task.id, task.description))
+                                    logger.info("<Created Task> %s:%s" % (task.id, task.description))
                             else:
                                 log_unkown_story(storyxml)
 
@@ -238,15 +249,9 @@ class Sleuth(object):
                                 story = self.stories[storyxml.id]
                                 for taskxml in storyxml.tasks.iterchildren():
                                     if taskxml.id in story.tasks:
-                                        if hasattr(taskxml, 'description'):
-                                            story.tasks[taskxml.id].description = taskxml.description
-                                            logger.info("description")
-                                        if hasattr(taskxml, 'complete'):
-                                            story.tasks[taskxml.id].complete = taskxml.complete
-                                            logger.info("complete")
-                                        if hasattr(taskxml, 'position'):
-                                            story.tasks[taskxml.id].position = position
-                                            logger.info("position")
+                                        task = story.tasks[taskxml.id]
+                                        task.update(taskxml)
+                                        logger.info("<Updated Task> %s:%s" % (task.id, task.description))
                                     else:
                                         logger.info('Task unknown: %s' % taskxml.id)
                             else:
@@ -259,7 +264,9 @@ class Sleuth(object):
                                 story = self.stories[storyxml.id]
                                 for taskxml in storyxml.tasks.iterchildren():
                                     if taskxml.id in story.tasks:
+                                        task = story.tasks[taskxml.id]
                                         del story.tasks[taskxml.id]
+                                        logger.info("<Deleted Task> %s:%s" % (task.id, task.description))
                                     else:
                                         logger.info('Task unknown: %s' % taskxml.id)
                             else:
@@ -272,25 +279,32 @@ class Sleuth(object):
                                 story = self.stories[storyxml.id]
                                 for commentxml in storyxml.comments.iterchildren():
                                     if commentxml.id in story.notes:
+                                        note = story.notes[commentxml.id]
                                         del story.notes[commentxml.id]
-                                        logger.info('%s: %s' % (activity.event_type, storyxml.id))
+                                        logger.info("<Deleted Note> %s:%s" % (note.id, note.text))
                                     else:
                                         logger.info('Comment Unknown: %s' % commentxml.id)
                             else:
                                 log_unkown_story(storyxml)
 
                     elif activity.event_type in ['move_from_project']:
-                        pass
                         # because all the projects are mixed together move_from_project event_type can be ignored
+                        pass
 
                     else:
                         logger.warning('Unknown event type: %s' % activity.event_type)
                         if __debug__:
-                            logger.debug(lxml.etree.tostring(activity))
+                            logger.debug(pt_api.to_str(activity))
+                    # Only take it off the queue when it has finished
+                    # only for the purposes of the unit tests, so they can tell when the
+                    # activity has been processed.
+                    activity = self.activity_queue.pop(0)
             else:
                 time.sleep(1)
 
+
     def collect_task_updates(self):
+
         def get_activities():
             lastCheck = datetime.datetime.now()
             if time.daylight:
@@ -311,9 +325,10 @@ class Sleuth(object):
                             self.activity_queue.append(activityxml)
                 lastCheck = check
                 time.sleep(1)
-        
+
         self.collect_task_thread = threading.Thread(target=get_activities)
         self.collect_task_thread.start()
+
 
 if __name__ == '__main__':
     import argparse

@@ -1,8 +1,9 @@
-from lxml import objectify
+import lxml
 import logging
 import subprocess
 import urllib
 import time
+from lxml import objectify
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +24,11 @@ def APICall(url, token):
 
 
 class StorySearch():
-    
+
     def __init__(self, project_id, story_filter=None):
         self.project_id = project_id
         self.story_filter = story_filter
-    
+
     def filter_by_states(self, states):
         ''' Include only stories in this state
         '''
@@ -36,15 +37,15 @@ class StorySearch():
             story_filter = self.story_filter + ' state:%s' % states
         else:
             story_filter = 'state:%s' % states
-        
+
         return StorySearch(self.project_id, story_filter=story_filter)
-    
+
     @property
     def url(self):
         ''' Return the url to make the api call
         '''
         return '%s/projects/%s/stories?%s' % (URL_API3, self.project_id, urllib.urlencode({'filter': self.story_filter}))
-        
+
     def get(self, token):
         ''' Actually get the stories
         '''
@@ -58,7 +59,7 @@ def get_stories(project_id, block, token, story_constructor=lambda project_id, s
     '''
     if block not in BLOCKS:
         raise ValueError('The block value must be in %s, not %s' % (BLOCKS, block))
-    
+
     stories = []
     if block == 'icebox':
         # icebox stories are 'unscheduled', can't query directly for icebox stories, like we can with the other blocks
@@ -71,7 +72,7 @@ def get_stories(project_id, block, token, story_constructor=lambda project_id, s
         iterations = objectify.fromstring(data)
         for iteration in iterations.iterchildren():
             stories.append([story_constructor(project_id, storyxml) for storyxml in iteration.stories.iterchildren()])
-        
+
     return stories
 
 
@@ -91,3 +92,8 @@ def get_project_activities_v3(project_id, since, token):
                    token)
     activitiesxml = objectify.fromstring(data)
     return activitiesxml
+
+
+def to_str(objectified_object):
+    #return lxml.etree.tostring(objectified_object)
+    return str(objectified_object)

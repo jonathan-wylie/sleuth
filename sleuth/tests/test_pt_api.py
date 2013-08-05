@@ -4,19 +4,19 @@ import unittest2
 
 
 class Test_StorySearch(unittest2.TestCase):
-    
+
     def test_init(self):
         # setup
         project_id = MagicMock()
         story_filter = MagicMock()
-        
+
         # action
         story_search = pt_api.StorySearch(project_id, story_filter=story_filter)
 
         # confirm
         self.assertEqual(story_search.project_id, project_id)
         self.assertEqual(story_search.story_filter, story_filter)
-    
+
     @patch('sleuth.pt_api.urllib')
     def test_url(self, urllib):
         # setup
@@ -24,13 +24,13 @@ class Test_StorySearch(unittest2.TestCase):
         story_filter = MagicMock()
         encoded_args = 'filter=encoded_args'
         urllib.urlencode.return_value = encoded_args
-        
+
         # action
         story_search = pt_api.StorySearch(project_id, story_filter=story_filter)
-        
+
         # confirm
         self.assertEqual(story_search.url, 'https://www.pivotaltracker.com/services/v3/projects/%s/stories?%s' % (project_id, encoded_args))
-    
+
     @patch('sleuth.pt_api.APICall')
     def test_get(self, APICall):
         # setup
@@ -43,19 +43,19 @@ class Test_StorySearch(unittest2.TestCase):
 
         # action
         data = story_search.get(token)
-        
+
         # confirm
         self.assertEqual(expected_data, data)
         APICall.assert_called_once_with(story_search.url, token)
-    
+
     def test_filter_by_states_first_filter(self):
         # setup
         project_id = 4
         story_search = pt_api.StorySearch(project_id)
-        
+
         # action
         story_search = story_search.filter_by_states(['state1', 'state2'])
-        
+
         # confirm
         self.assertEqual(story_search.url, 'https://www.pivotaltracker.com/services/v3/projects/%s/stories?%s' % (project_id, 'filter=state%3Astate1%2Cstate2'))
 
@@ -63,16 +63,16 @@ class Test_StorySearch(unittest2.TestCase):
         # setup
         project_id = 4
         story_search = pt_api.StorySearch(project_id)
-        
+
         # action
         story_search = story_search.filter_by_states(['state1', 'state2']).filter_by_states(['state3', 'state4'])
-        
+
         # confirm
         self.assertEqual(story_search.url, 'https://www.pivotaltracker.com/services/v3/projects/%s/stories?%s' % (project_id, 'filter=state%3Astate1%2Cstate2+state%3Astate3%2Cstate4'))
 
 
 class Test_APICall(unittest2.TestCase):
-    
+
     @patch('sleuth.pt_api.subprocess')
     def test_APICall(self, subprocess):
         # setup
@@ -80,10 +80,10 @@ class Test_APICall(unittest2.TestCase):
         token = 'xxxxxxxxxx'
         stdout_data = 'std_out'
         subprocess.Popen.return_value.communicate.return_value = (stdout_data, 'std_in')
-        
+
         # action
         data = pt_api.APICall(url, token)
-        
+
         # confirm
         subprocess.Popen.assert_called_once_with("curl -H 'X-TrackerToken: xxxxxxxxxx' -X GET http://www.myurl.co.uk/blah?stuff=things",
                                                  shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -92,7 +92,7 @@ class Test_APICall(unittest2.TestCase):
 
 @patch('sleuth.pt_api.APICall')
 class Test_get_stories(unittest2.TestCase):
-    
+
     def setUp(self):
         self.token = 'xxxxxxxxxx'
         self.project_id = 1
@@ -208,10 +208,10 @@ class Test_get_stories(unittest2.TestCase):
         # setup
         block = 'backlog'
         APICall.return_value = self.iterations_reponse
-        
+
         # action
         stories = pt_api.get_stories(self.project_id, block, self.token)
-        
+
         # confirm
         self.assertEqual(stories[0][0].id, 0)
         self.assertEqual(stories[0][1].id, 1)
@@ -221,20 +221,18 @@ class Test_get_stories(unittest2.TestCase):
     def test_get_stories_Unknown_Block(self, APICall):
         # setup
         block = 'UNKOWN_BLOCK'
-        
+
         # action / confirm
         self.assertRaises(ValueError, pt_api.get_stories, self.project_id, block, self.token)
-        
+
     def test_get_stories_icebox(self, APICall):
         # setup
         block = 'icebox'
         APICall.return_value = self.ice_box_response
-        
+
         # action
         stories = pt_api.get_stories(self.project_id, block, self.token)
-        
+
         # confirm
-        print stories[0][0].id
-        print stories[0][1].id
         self.assertEqual(stories[0][0].id, 0)
         self.assertEqual(stories[0][1].id, 1)
