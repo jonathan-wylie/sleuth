@@ -188,9 +188,7 @@ class Sleuth(object):
                             if storyxml.id in self.stories:
                                 story = self.stories[storyxml.id]
                                 logger.info('%s: %s' % (activity.event_type, storyxml.id))
-                                logger.info("UPDATING")
                                 story.update(activity, storyxml)
-                                logger.info("UPDATED")
                                 logger.info("<Updated Story> %s:%s" % (story.id, story.description))
                             else:
                                 log_unkown_story(storyxml)
@@ -199,9 +197,7 @@ class Sleuth(object):
                         for storyxml in activity.stories.iterchildren():
                             logger.info('%s: %s' % (activity.event_type, storyxml.id))
                             story = Story.create(activity.project_id, storyxml)
-                            logger.info("CREATE STORY")
                             self.stories[story.id] = story
-                            logger.info("ADD STORY")
                             logger.info("<Added Story> %s:%s" % (story.id, story.description))
 
                     elif activity.event_type == 'story_delete':
