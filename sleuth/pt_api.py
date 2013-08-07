@@ -95,5 +95,4 @@ def get_project_activities_v3(project_id, since, token):
 
 
 def to_str(objectified_object):
-    #return lxml.etree.tostring(objectified_object)
-    return str(objectified_object)
+    return lxml.etree.tostring(objectified_object)

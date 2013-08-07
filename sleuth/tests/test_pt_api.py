@@ -1,6 +1,8 @@
 from mock import patch, MagicMock
-from sleuth import pt_api
+import datetime
 import unittest2
+
+from sleuth import pt_api
 
 
 class Test_StorySearch(unittest2.TestCase):
@@ -236,3 +238,56 @@ class Test_get_stories(unittest2.TestCase):
         # confirm
         self.assertEqual(stories[0][0].id, 0)
         self.assertEqual(stories[0][1].id, 1)
+
+
+@patch('sleuth.pt_api.APICall')
+@patch('sleuth.pt_api.objectify')
+class Test_get_project_activities(unittest2.TestCase):
+
+    def test(self, objectify, APICall):
+        # setup
+        project_id = 1
+        since = datetime.datetime(2013, 8, 7, 20, 33, 30)
+        token = '--token--'
+
+        # action
+        activitiesxml = pt_api.get_project_activities(project_id, since, token)
+
+        # confirm
+        APICall.assert_called_once_with('https://www.pivotaltracker.com/services/v4/projects/1/activities?occurred_since_date=2013/8/07%0020:33:30%20GMT',
+                                        '--token--')
+        self.assertEqual(activitiesxml, objectify.fromstring.return_value)
+
+
+@patch('sleuth.pt_api.APICall')
+@patch('sleuth.pt_api.objectify')
+class Test_get_project_activities_v3(unittest2.TestCase):
+
+    def test(self, objectify, APICall):
+        # setup
+        project_id = 1
+        since = datetime.datetime(2013, 8, 7, 20, 33, 30)
+        token = '--token--'
+
+        # action
+        activitiesxml = pt_api.get_project_activities_v3(project_id, since, token)
+
+        # confirm
+        APICall.assert_called_once_with('https://www.pivotaltracker.com/services/v3/projects/1/activities?occurred_since_date=2013/8/07%0020:33:30%20GMT',
+                                        '--token--')
+        self.assertEqual(activitiesxml, objectify.fromstring.return_value)
+
+
+@patch('sleuth.pt_api.lxml.etree.tostring')
+class Test_to_str(unittest2.TestCase):
+
+    def test(self, tostring):
+        # setup
+        thing_to_str = MagicMock()
+
+        # action
+        thing_stringed = pt_api.to_str(thing_to_str)
+
+        # confirm
+        tostring.assert_called_once_with(thing_to_str)
+        self.assertEqual(tostring.return_value, thing_stringed)
