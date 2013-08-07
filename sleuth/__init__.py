@@ -166,13 +166,14 @@ class Sleuth(object):
         '''
         self.activity_queue.append(activity)
 
-    def _process_activities(self):
-        ''' To be run in a thread, process all the activities in the queue
-        '''
-        def log_unkown_story(storyxml):
+    def log_unkown_story(self, storyxml):
             logger.warning('Story unknown: %s' % storyxml.id)
             if __debug__:
                 logger.debug(pt_api.to_str(storyxml))
+
+    def _process_activities(self):
+        ''' To be run in a thread, process all the activities in the queue
+        '''
 
         while True:
             if self.activity_queue:
@@ -191,7 +192,7 @@ class Sleuth(object):
                                 story.update(activity, storyxml)
                                 logger.info("<Updated Story> %s:%s" % (story.id, story.description))
                             else:
-                                log_unkown_story(storyxml)
+                                self.log_unkown_story(storyxml)
 
                     elif activity.event_type == 'story_create':
                         for storyxml in activity.stories.iterchildren():
@@ -209,7 +210,7 @@ class Sleuth(object):
                                 del self.stories[storyxml.id]
                                 logger.info("<Deleted Story> %s:%s" % (story.id, story.description))
                             else:
-                                log_unkown_story(storyxml)
+                                self.log_unkown_story(storyxml)
 
                     elif activity.event_type == 'note_create':
                         for storyxml in activity.stories.iterchildren():
@@ -221,7 +222,7 @@ class Sleuth(object):
                                     story.notes[note.id] = note
                                     logger.info("<Created Note> %s:%s" % (note.id, note.text))
                             else:
-                                log_unkown_story(storyxml)
+                                self.log_unkown_story(storyxml)
 
                     elif activity.event_type == 'task_create':
                         for storyxml in activity.stories.iterchildren():
@@ -236,7 +237,7 @@ class Sleuth(object):
                                     story.tasks[task.id] = task
                                     logger.info("<Created Task> %s:%s" % (task.id, task.description))
                             else:
-                                log_unkown_story(storyxml)
+                                self.log_unkown_story(storyxml)
 
                     elif activity.event_type == 'task_edit':
                         for storyxml in activity.stories.iterchildren():
@@ -251,7 +252,7 @@ class Sleuth(object):
                                     else:
                                         logger.info('Task unknown: %s' % taskxml.id)
                             else:
-                                log_unkown_story(storyxml)
+                                self.log_unkown_story(storyxml)
 
                     elif activity.event_type == 'task_delete':
                         for storyxml in activity.stories.iterchildren():
@@ -266,7 +267,7 @@ class Sleuth(object):
                                     else:
                                         logger.info('Task unknown: %s' % taskxml.id)
                             else:
-                                log_unkown_story(storyxml)
+                                self.log_unkown_story(storyxml)
 
                     elif activity.event_type == 'comment_delete':
                         for storyxml in activity.stories.iterchildren():
@@ -281,7 +282,7 @@ class Sleuth(object):
                                     else:
                                         logger.info('Comment Unknown: %s' % commentxml.id)
                             else:
-                                log_unkown_story(storyxml)
+                                self.log_unkown_story(storyxml)
 
                     elif activity.event_type in ['move_from_project']:
                         # because all the projects are mixed together move_from_project event_type can be ignored
