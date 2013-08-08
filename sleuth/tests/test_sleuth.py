@@ -1,7 +1,7 @@
 from mock import patch, call, MagicMock, Mock
 import unittest2
-
 from sleuth import Sleuth, Story, Task
+import time
 
 
 def flatten_list(alist):
@@ -15,6 +15,7 @@ def flatten_list(alist):
 
 @patch('sleuth.pt_api')
 @patch('sleuth.Story')
+@patch('sleuth.Sleuth.log_unknown_story')
 @patch('sleuth.pt_api.to_str', MagicMock())
 @patch('sleuth.Sleuth.collect_task_updates', MagicMock())
 class Test_Sleuth(unittest2.TestCase):
@@ -35,15 +36,7 @@ class Test_Sleuth(unittest2.TestCase):
         self.stories.update(dict([(story.id, story) for story in flatten_list(self.project2_current)]))
         self.stories.update(dict([(story.id, story) for story in flatten_list(self.project2_backlog)]))
 
-    def wait_for_activity_to_be_processed(self, sleuth):
-        max_wait = 5
-        waited = 0
-        while sleuth.activity_queue and waited < max_wait:
-            import time
-            time.sleep(1)
-            waited += 1
-
-    def test_init(self, Story, pt_api):
+    def test_init(self, log_unknown_story, Story, pt_api):
         # setup
         pt_api.get_stories.side_effect = [self.project1_current, self.project1_backlog, self.project2_current, self.project2_backlog]
 
@@ -63,7 +56,7 @@ class Test_Sleuth(unittest2.TestCase):
 
         self.assertDictEqual(self.stories, sleuth.stories)
 
-    def test_new_activity_story_update(self, Story, pt_api):
+    def test_process_activity_story_update(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
@@ -72,14 +65,12 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [updated_story]
 
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
         sleuth.stories[15].update.assert_called_once_with(activity, updated_story)
 
-    @patch('sleuth.Sleuth.log_unkown_story')
-    def test_new_activity_story_update_unknown_story(self, log_unkown_story, Story, pt_api):
+    def test_process_activity_story_update_unknown_story(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = {}
@@ -88,13 +79,12 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [updated_story]
 
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
-        log_unkown_story.assert_called_once_with(updated_story)
+        log_unknown_story.assert_called_once_with(updated_story)
 
-    def test_new_activity_story_move_into_project(self, Story, pt_api):
+    def test_process_activity_story_move_into_project(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
@@ -103,13 +93,12 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [moved_story]
 
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
         sleuth.stories[15].update.assert_called_once_with(activity, moved_story)
 
-    def test_new_activity_story_create(self, Story, pt_api):
+    def test_process_activity_story_create(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
@@ -118,14 +107,13 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [created_story]
         realNewStory = Story.create.return_value
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
         Story.create.assert_called_once_with(activity.project_id, created_story)
         self.assertTrue(sleuth.stories[realNewStory.id] == realNewStory)
 
-    def test_new_activity_story_delete(self, Story, pt_api):
+    def test_process_activity_story_delete(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
@@ -135,15 +123,13 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [deleted_story]
 
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
         self.assertTrue(deleted_story.id not in sleuth.stories)
         self.assertTrue(realDeletedStory.delete.called)
 
-    @patch('sleuth.Sleuth.log_unkown_story')
-    def test_new_activity_delete_unknown_story(self, log_unkown_story, Story, pt_api):
+    def test_process_activity_delete_unknown_story(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = {}
@@ -152,14 +138,12 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [deleted_story]
 
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
-        log_unkown_story.assert_called_once_with(deleted_story)
+        log_unknown_story.assert_called_once_with(deleted_story)
 
-    @patch('sleuth.Sleuth.log_unkown_story')
-    def test_new_activity_note_create_unknown_story(self, log_unkown_story, Story, pt_api):
+    def test_process_activity_note_create_unknown_story(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = {}
@@ -168,13 +152,12 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [note_create_story]
 
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
-        log_unkown_story.assert_called_once_with(note_create_story)
+        log_unknown_story.assert_called_once_with(note_create_story)
 
-    def test_new_activity_note_create(self, Story, pt_api):
+    def test_process_activity_note_create(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
@@ -185,13 +168,12 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [note_create_story]
 
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
         self.assertEqual(sleuth.stories[note_create_story.id].notes[notexml.id].id, notexml.id)
 
-    def test_new_activity_task_create(self, Story, pt_api):
+    def test_process_activity_task_create(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
@@ -202,13 +184,12 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [task_create_story]
 
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
         self.assertEqual(sleuth.stories[task_create_story.id].tasks[taskxml.id].id, taskxml.id)
 
-    def test_new_activity_task_delete(self, Story, pt_api):
+    def test_process_activity_task_delete(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
@@ -219,13 +200,12 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [task_deletes_story]
 
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
         self.assertNotIn(taskxml.id, sleuth.stories[task_deletes_story.id].tasks)
 
-    def test_new_activity_task_update(self, Story, pt_api):
+    def test_process_activity_task_update(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
@@ -236,13 +216,12 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [task_updated_story]
 
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
         sleuth.stories[task_updated_story.id].tasks[taskxml.id].update.assert_called_once_with(taskxml)
 
-    def test_new_activity_comment_delete(self, Story, pt_api):
+    def test_process_activity_comment_delete(self, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
@@ -253,10 +232,9 @@ class Test_Sleuth(unittest2.TestCase):
         activity.stories.iterchildren.return_value = [comment_delete_story]
 
         # action
-        sleuth.new_activity(activity)
+        sleuth.process_activity(activity)
 
         # confirm
-        self.wait_for_activity_to_be_processed(sleuth)
         self.assertNotIn(commentxml.id, sleuth.stories[comment_delete_story.id].notes)
 
 
