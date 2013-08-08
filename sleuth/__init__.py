@@ -161,7 +161,7 @@ class Sleuth(object):
                                                                                                              story_constructor=Story.create))]))
         logger.info('Stories are loaded')
 
-    def activity_web_hook(self, activity):
+    def new_activity(self, activity):
         ''' Add the story changes to a queue to be processed
         '''
         self.activity_queue.append(activity)
@@ -299,7 +299,6 @@ class Sleuth(object):
             else:
                 time.sleep(1)
 
-
     def collect_task_updates(self):
 
         def get_activities():
@@ -332,7 +331,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Sleuth')
     parser.add_argument('--token', help='The pivotal tracker API token')
     parser.add_argument('--projects', nargs='+', type=int, help='The pivotal tracker project IDs')
-    parser.add_argument('--port', type=int, help='The port the activity_web_hook should listening on')
     args = parser.parse_args()
     sleuth = Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog'], token=args.token)
     while True:

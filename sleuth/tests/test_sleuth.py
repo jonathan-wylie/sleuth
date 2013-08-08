@@ -63,222 +63,201 @@ class Test_Sleuth(unittest2.TestCase):
 
         self.assertDictEqual(self.stories, sleuth.stories)
 
-    def test_activity_web_hook_update(self, Story, pt_api):
+    def test_new_activity_story_update(self, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
-        updatedStory = MagicMock(id=15)
+        updated_story = MagicMock(id=15)
         activity = MagicMock(event_type='story_update')
-        activity.stories.iterchildren.return_value = [updatedStory]
+        activity.stories.iterchildren.return_value = [updated_story]
 
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        sleuth.stories[15].update.assert_called_once_with(activity, updatedStory)
+        sleuth.stories[15].update.assert_called_once_with(activity, updated_story)
 
     @patch('sleuth.Sleuth.log_unkown_story')
-    def test_activity_web_hook_update_unknown_story(self, log_unkown_story, Story, pt_api):
+    def test_new_activity_story_update_unknown_story(self, log_unkown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = {}
-        updatedStory = MagicMock(id=15)
+        updated_story = MagicMock(id=15)
         activity = MagicMock(event_type='story_update')
-        activity.stories.iterchildren.return_value = [updatedStory]
+        activity.stories.iterchildren.return_value = [updated_story]
 
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        log_unkown_story.assert_called_once_with(updatedStory)
+        log_unkown_story.assert_called_once_with(updated_story)
 
-    def test_activity_web_hook_move_into_project(self, Story, pt_api):
+    def test_new_activity_story_move_into_project(self, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
-        updatedStory = MagicMock(id=15)
+        moved_story = MagicMock(id=15)
         activity = MagicMock(event_type='move_into_project')
-        activity.stories.iterchildren.return_value = [updatedStory]
+        activity.stories.iterchildren.return_value = [moved_story]
 
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        sleuth.stories[15].update.assert_called_once_with(activity, updatedStory)
+        sleuth.stories[15].update.assert_called_once_with(activity, moved_story)
 
-    def test_activity_web_hook_create(self, Story, pt_api):
+    def test_new_activity_story_create(self, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
-        newStory = MagicMock(id=19)
+        created_story = MagicMock(id=19)
         activity = MagicMock(event_type='story_create')
-        activity.stories.iterchildren.return_value = [newStory]
+        activity.stories.iterchildren.return_value = [created_story]
         realNewStory = Story.create.return_value
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        Story.create.assert_called_once_with(activity.project_id, newStory)
+        Story.create.assert_called_once_with(activity.project_id, created_story)
         self.assertTrue(sleuth.stories[realNewStory.id] == realNewStory)
 
-    def test_activity_web_hook_delete(self, Story, pt_api):
+    def test_new_activity_story_delete(self, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
-        deletedStory = MagicMock(id=15)
+        deleted_story = MagicMock(id=15)
         activity = MagicMock(event_type='story_delete')
-        realDeletedStory = sleuth.stories[deletedStory.id]
-        activity.stories.iterchildren.return_value = [deletedStory]
+        realDeletedStory = sleuth.stories[deleted_story.id]
+        activity.stories.iterchildren.return_value = [deleted_story]
 
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        self.assertTrue(deletedStory.id not in sleuth.stories)
+        self.assertTrue(deleted_story.id not in sleuth.stories)
         self.assertTrue(realDeletedStory.delete.called)
 
     @patch('sleuth.Sleuth.log_unkown_story')
-    def test_activity_web_hook_delete_unknown_story(self, log_unkown_story, Story, pt_api):
+    def test_new_activity_delete_unknown_story(self, log_unkown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = {}
-        deletedStory = MagicMock(id=15)
+        deleted_story = MagicMock(id=15)
         activity = MagicMock(event_type='story_delete')
-        activity.stories.iterchildren.return_value = [deletedStory]
+        activity.stories.iterchildren.return_value = [deleted_story]
 
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        log_unkown_story.assert_called_once_with(deletedStory)
+        log_unkown_story.assert_called_once_with(deleted_story)
 
     @patch('sleuth.Sleuth.log_unkown_story')
-    def test_activity_web_hook_note_create_unknown_story(self, log_unkown_story, Story, pt_api):
+    def test_new_activity_note_create_unknown_story(self, log_unkown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = {}
-        noteCreateStory = MagicMock(id=15)
+        note_create_story = MagicMock(id=15)
         activity = MagicMock(event_type='note_create')
-        activity.stories.iterchildren.return_value = [noteCreateStory]
+        activity.stories.iterchildren.return_value = [note_create_story]
 
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        log_unkown_story.assert_called_once_with(noteCreateStory)
+        log_unkown_story.assert_called_once_with(note_create_story)
 
-    def test_activity_web_hook_note_create(self, Story, pt_api):
+    def test_new_activity_note_create(self, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
-        noteCreateStory = MagicMock(id=15)
+        note_create_story = MagicMock(id=15)
         notexml = MagicMock()
-        noteCreateStory.notes.iterchildren.return_value = [notexml]
+        note_create_story.notes.iterchildren.return_value = [notexml]
         activity = MagicMock(event_type='note_create')
-        activity.stories.iterchildren.return_value = [noteCreateStory]
+        activity.stories.iterchildren.return_value = [note_create_story]
 
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        story = sleuth.stories[noteCreateStory.id]
-        self.assertEqual(story.notes[notexml.id].id, notexml.id)
+        self.assertEqual(sleuth.stories[note_create_story.id].notes[notexml.id].id, notexml.id)
 
-    def test_activity_web_hook_task_create(self, Story, pt_api):
+    def test_new_activity_task_create(self, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
-        taskCreateStory = MagicMock(id=15)
+        task_create_story = MagicMock(id=15)
         taskxml = MagicMock()
-        taskCreateStory.tasks.iterchildren.return_value = [taskxml]
+        task_create_story.tasks.iterchildren.return_value = [taskxml]
         activity = MagicMock(event_type='task_create')
-        activity.stories.iterchildren.return_value = [taskCreateStory]
+        activity.stories.iterchildren.return_value = [task_create_story]
 
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        story = sleuth.stories[taskCreateStory.id]
-        self.assertEqual(story.tasks[taskxml.id].id, taskxml.id)
+        self.assertEqual(sleuth.stories[task_create_story.id].tasks[taskxml.id].id, taskxml.id)
 
-    def test_activity_web_hook_task_delete(self, Story, pt_api):
+    def test_new_activity_task_delete(self, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
-        taskDeleteStory = MagicMock(id=15)
+        task_deletes_story = MagicMock(id=15)
         taskxml = MagicMock(id=1)
-        taskDeleteStory.tasks.iterchildren.return_value = [taskxml]
+        task_deletes_story.tasks.iterchildren.return_value = [taskxml]
         activity = MagicMock(event_type='task_delete')
-        activity.stories.iterchildren.return_value = [taskDeleteStory]
+        activity.stories.iterchildren.return_value = [task_deletes_story]
 
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        story = sleuth.stories[taskDeleteStory.id]
-        self.assertNotIn(taskxml.id, story.tasks)
+        self.assertNotIn(taskxml.id, sleuth.stories[task_deletes_story.id].tasks)
 
-    def test_activity_web_hook_task_update(self, Story, pt_api):
+    def test_new_activity_task_update(self, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
-        taskUpdatedStory = MagicMock(id=15)
+        task_updated_story = MagicMock(id=15)
         taskxml = MagicMock(id=1, complete=True)
-        taskUpdatedStory.tasks.iterchildren.return_value = [taskxml]
+        task_updated_story.tasks.iterchildren.return_value = [taskxml]
         activity = MagicMock(event_type='task_edit')
-        activity.stories.iterchildren.return_value = [taskUpdatedStory]
+        activity.stories.iterchildren.return_value = [task_updated_story]
 
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        story = sleuth.stories[taskUpdatedStory.id]
-        task = story.tasks[taskxml.id]
-        task.update.assert_called_once_with(taskxml)
+        sleuth.stories[task_updated_story.id].tasks[taskxml.id].update.assert_called_once_with(taskxml)
 
-    def test_activity_web_hook_comment_delete(self, Story, pt_api):
+    def test_new_activity_comment_delete(self, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
-        commentDeleteStory = MagicMock(id=15)
+        comment_delete_story = MagicMock(id=15)
         commentxml = MagicMock(id=1)
-        commentDeleteStory.comments.iterchildren.return_value = [commentxml]
+        comment_delete_story.comments.iterchildren.return_value = [commentxml]
         activity = MagicMock(event_type='comment_delete')
-        activity.stories.iterchildren.return_value = [commentDeleteStory]
+        activity.stories.iterchildren.return_value = [comment_delete_story]
 
         # action
-        sleuth.activity_web_hook(activity)
+        sleuth.new_activity(activity)
 
         # confirm
         self.wait_for_activity_to_be_processed(sleuth)
-        story = sleuth.stories[commentDeleteStory.id]
-        self.assertNotIn(commentxml.id, story.notes)
-
-
-# event_type == 'note_create':
-#                         for storyxml in activity.stories.iterchildren():
-#                             logger.info('%s: %s' % (activity.event_type, storyxml.id))
-#                             if storyxml.id in self.stories:
-#                                 story = self.stories[storyxml.id]
-#                                 for notexml in storyxml.notes.iterchildren():
-#                                     note = Note(notexml.id, notexml['text'].text, activity.author, activity.occurred_at)
-#                                     story.notes[note.id] = note
-#                                     logger.info("<Created Note> %s:%s" % (note.id, note.text))
-#                             else:
-#                                 self.log_unkown_story(storyxml)
-
-
+        self.assertNotIn(commentxml.id, sleuth.stories[comment_delete_story.id].notes)
 
 
 class Test_Story(unittest2.TestCase):
