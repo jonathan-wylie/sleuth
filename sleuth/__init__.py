@@ -305,4 +305,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     sleuth = Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog'], token=args.token)
     while True:
-        time.sleep(60)
+        sleuth.collect_task_updates()
+        time.sleep(1)
