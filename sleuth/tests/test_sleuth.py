@@ -233,6 +233,23 @@ class Test_Sleuth(unittest2.TestCase):
 
         # confirm
         self.assertNotIn(commentxml.id, sleuth.stories[comment_delete_story.id].notes)
+    
+    @patch('sleuth.logger')
+    def test_process_activity_unknown_event(self, logger, log_unknown_story, Story, pt_api):
+        # setup
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth.stories = self.stories
+        comment_delete_story = MagicMock(id=15)
+        commentxml = MagicMock(id=1)
+        comment_delete_story.comments.iterchildren.return_value = [commentxml]
+        activity = MagicMock(event_type='sdhghsldjh176581347687sghfvsdjlh87e5923878')
+        activity.stories.iterchildren.return_value = [comment_delete_story]
+
+        # action
+        sleuth.process_activity(activity)
+
+        # confirm
+        logger.warning.assert_called_once_with('Unknown event type: sdhghsldjh176581347687sghfvsdjlh87e5923878')
 
 
 class Test_Story(unittest2.TestCase):
