@@ -16,7 +16,6 @@ def flatten_list(alist):
 @patch('sleuth.Story')
 @patch('sleuth.Sleuth.log_unknown_story')
 @patch('sleuth.pt_api.to_str', MagicMock())
-@patch('sleuth.Sleuth.collect_task_updates', MagicMock())
 class Test_Sleuth(unittest2.TestCase):
 
     def setUp(self):

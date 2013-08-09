@@ -134,6 +134,7 @@ def _flatten_list(alist):
 class Sleuth(object):
     '''This class receives the activity xml parsed from the web app, and updates all the data'''
     def __init__(self, project_ids, track_blocks, token):
+        self._set_last_updated()
         self.project_ids = project_ids
         self.token = token
         self.track_blocks = track_blocks
@@ -142,8 +143,13 @@ class Sleuth(object):
         self.load_stories_thread = threading.Thread(target=self.load_stories())
         self.load_stories_thread.daemon = True
         self.load_stories_thread.start()
-        self.collect_task_updates()
-
+    
+    def _set_last_updated(self):
+        last_updated = datetime.datetime.now()
+        if time.daylight:
+            last_updated = last_updated - datetime.timedelta(hours=1)
+        self._last_updated = last_updated
+        
     def load_stories(self):
         ''' Reload the stories from the trackers
         '''
@@ -272,30 +278,23 @@ class Sleuth(object):
                     logger.debug(pt_api.to_str(activity))
 
     def collect_task_updates(self):
-
-        def get_activities():
-            lastCheck = datetime.datetime.now()
-            if time.daylight:
-                    lastCheck = lastCheck - datetime.timedelta(hours=1)
-            while True:
-                check = datetime.datetime.now()
-                if time.daylight:
-                    check = check - datetime.timedelta(hours=1)
-                for project_id in self.project_ids:
-                    activitiesxml = pt_api.get_project_activities_v3(project_id, lastCheck, self.token)
-                    for activityxml in activitiesxml.iterchildren():
-                        logger.info(activityxml.event_type)
-                        self.process_activity(activityxml)
-                    activitiesxml = pt_api.get_project_activities(project_id, lastCheck, self.token)
-                    for activityxml in activitiesxml.iterchildren():
-                        if activityxml.event_type in ['task_delete', 'task_edit', 'task_create', 'comment_delete']:
-                            logger.info(activityxml.event_type)
-                            self.process_activity(activityxml)
-                lastCheck = check
-                time.sleep(1)
-
-        self.collect_task_thread = threading.Thread(target=get_activities)
-        self.collect_task_thread.start()
+        """ Update the stories since the last time this method was called.
+        """
+        
+        for project_id in self.project_ids:
+            last_updated = self._last_updated
+            
+            activitiesxml = pt_api.get_project_activities_v3(project_id, last_updated, self.token)
+            for activityxml in activitiesxml.iterchildren():
+                logger.info(activityxml.event_type)
+                self.process_activity(activityxml)
+            activitiesxml = pt_api.get_project_activities(project_id, last_updated, self.token)
+            for activityxml in activitiesxml.iterchildren():
+                if activityxml.event_type in ['task_delete', 'task_edit', 'task_create', 'comment_delete']:
+                    logger.info(activityxml.event_type)
+                    self.process_activity(activityxml)
+        
+        self._set_last_updated()
 
 
 if __name__ == '__main__':
