@@ -249,8 +249,19 @@ class Test_Sleuth(unittest2.TestCase):
 
         # confirm
         logger.warning.assert_called_once_with('Unknown event type: sdhghsldjh176581347687sghfvsdjlh87e5923878')
+    
+    @patch('sleuth.Sleuth.process_activity')
+    def test_collect_task_stories(self, process_activity, log_unknown_story, Story, pt_api):
+        # setup
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth.stories = self.stories
 
+        # action
+        sleuth.collect_task_updates()
 
+        # confirm
+        
+        
 class Test_Story(unittest2.TestCase):
 
     def test_get_data_from_story_xml(self):
