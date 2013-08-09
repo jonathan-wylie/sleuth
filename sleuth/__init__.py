@@ -121,9 +121,6 @@ class Story(object):
             logger.info('Changed story project_id changed from %s to %s' % (self.project_id, project_id))
             self.project_id = project_id
 
-    def delete(self):
-        pass
-
 
 def _flatten_list(alist):
     if type(alist) != type([]):
@@ -200,7 +197,6 @@ class Sleuth(object):
                     logger.info('%s: %s' % (activity.event_type, storyxml.id))
                     story = self.getStory(storyxml)
                     if story:
-                        story.delete()
                         del self.stories[storyxml.id]
                         logger.info("<Deleted Story> %s:%s" % (story.id, story.description))
 

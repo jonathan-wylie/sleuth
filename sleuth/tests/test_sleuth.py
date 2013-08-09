@@ -1,7 +1,6 @@
 from mock import patch, call, MagicMock, Mock
 import unittest2
 from sleuth import Sleuth, Story, Task
-import time
 
 
 def flatten_list(alist):
@@ -119,7 +118,6 @@ class Test_Sleuth(unittest2.TestCase):
         sleuth.stories = self.stories
         deleted_story = MagicMock(id=15)
         activity = MagicMock(event_type='story_delete')
-        realDeletedStory = sleuth.stories[deleted_story.id]
         activity.stories.iterchildren.return_value = [deleted_story]
 
         # action
@@ -127,7 +125,6 @@ class Test_Sleuth(unittest2.TestCase):
 
         # confirm
         self.assertTrue(deleted_story.id not in sleuth.stories)
-        self.assertTrue(realDeletedStory.delete.called)
 
     def test_process_activity_delete_unknown_story(self, log_unknown_story, Story, pt_api):
         # setup
