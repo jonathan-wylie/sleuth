@@ -161,6 +161,15 @@ class Sleuth(object):
             logger.warning('Story unknown: %s' % storyxml.id)
             if __debug__:
                 logger.debug(pt_api.to_str(storyxml))
+    
+    def getStory(self, storyxml):
+        ''' If the story is tracked return it
+            else return None and log the unknwon story
+        '''
+        if storyxml.id in self.stories:
+            return self.stories[storyxml.id]
+        else:
+            self.log_unknown_story(storyxml)
 
     def process_activity(self, activity):
         ''' To be run in a thread, process all the activities in the queue
@@ -173,13 +182,11 @@ class Sleuth(object):
 
             if activity.event_type in ['story_update', 'move_into_project']:
                 for storyxml in activity.stories.iterchildren():
-                    if storyxml.id in self.stories:
-                        story = self.stories[storyxml.id]
+                    story = self.getStory(storyxml)
+                    if story:
                         logger.info('%s: %s' % (activity.event_type, storyxml.id))
                         story.update(activity, storyxml)
                         logger.info("<Updated Story> %s:%s" % (story.id, story.description))
-                    else:
-                        self.log_unknown_story(storyxml)
 
             elif activity.event_type == 'story_create':
                 for storyxml in activity.stories.iterchildren():
@@ -191,46 +198,40 @@ class Sleuth(object):
             elif activity.event_type == 'story_delete':
                 for storyxml in activity.stories.iterchildren():
                     logger.info('%s: %s' % (activity.event_type, storyxml.id))
-                    if storyxml.id in self.stories:
-                        story = self.stories[storyxml.id]
-                        self.stories[storyxml.id].delete()
+                    story = self.getStory(storyxml)
+                    if story:
+                        story.delete()
                         del self.stories[storyxml.id]
                         logger.info("<Deleted Story> %s:%s" % (story.id, story.description))
-                    else:
-                        self.log_unknown_story(storyxml)
 
             elif activity.event_type == 'note_create':
                 for storyxml in activity.stories.iterchildren():
                     logger.info('%s: %s' % (activity.event_type, storyxml.id))
-                    if storyxml.id in self.stories:
-                        story = self.stories[storyxml.id]
+                    story = self.getStory(storyxml)
+                    if story:
                         for notexml in storyxml.notes.iterchildren():
                             note = Note(notexml.id, notexml['text'].text, activity.author, activity.occurred_at)
                             story.notes[note.id] = note
                             logger.info("<Created Note> %s:%s" % (note.id, note.text))
-                    else:
-                        self.log_unknown_story(storyxml)
 
             elif activity.event_type == 'task_create':
                         for storyxml in activity.stories.iterchildren():
                             logger.info('%s: %s' % (activity.event_type, storyxml.id))
-                            if storyxml.id in self.stories:
+                            story = self.getStory(storyxml)
+                            if story:
                                 for taskxml in storyxml.tasks.iterchildren():
-                                    story = self.stories[storyxml.id]
                                     position = getattr(taskxml, 'position', None)
                                     complete = getattr(taskxml, 'complete', False)
                                     created_at = getattr(taskxml, 'created_at', None)
                                     task = Task(taskxml.id, taskxml.description, created_at, position=position, complete=complete)
                                     story.tasks[task.id] = task
                                     logger.info("<Created Task> %s:%s" % (task.id, task.description))
-                            else:
-                                self.log_unknown_story(storyxml)
 
             elif activity.event_type == 'task_edit':
                 for storyxml in activity.stories.iterchildren():
-                    if storyxml.id in self.stories:
+                    story = self.getStory(storyxml)
+                    if story:
                         logger.info('%s: %s' % (activity.event_type, storyxml.id))
-                        story = self.stories[storyxml.id]
                         for taskxml in storyxml.tasks.iterchildren():
                             if taskxml.id in story.tasks:
                                 task = story.tasks[taskxml.id]
@@ -238,14 +239,12 @@ class Sleuth(object):
                                 logger.info("<Updated Task> %s:%s" % (task.id, task.description))
                             else:
                                 logger.info('Task unknown: %s' % taskxml.id)
-                    else:
-                        self.log_unknown_story(storyxml)
 
             elif activity.event_type == 'task_delete':
                 for storyxml in activity.stories.iterchildren():
-                    if storyxml.id in self.stories:
+                    story = self.getStory(storyxml)
+                    if story:
                         logger.info('%s: %s' % (activity.event_type, storyxml.id))
-                        story = self.stories[storyxml.id]
                         for taskxml in storyxml.tasks.iterchildren():
                             if taskxml.id in story.tasks:
                                 task = story.tasks[taskxml.id]
@@ -253,14 +252,12 @@ class Sleuth(object):
                                 logger.info("<Deleted Task> %s:%s" % (task.id, task.description))
                             else:
                                 logger.info('Task unknown: %s' % taskxml.id)
-                    else:
-                        self.log_unknown_story(storyxml)
 
             elif activity.event_type == 'comment_delete':
                 for storyxml in activity.stories.iterchildren():
-                    if storyxml.id in self.stories:
+                    story = self.getStory(storyxml)
+                    if story:
                         logger.info('%s: %s' % (activity.event_type, storyxml.id))
-                        story = self.stories[storyxml.id]
                         for commentxml in storyxml.comments.iterchildren():
                             if commentxml.id in story.notes:
                                 note = story.notes[commentxml.id]
@@ -268,8 +265,6 @@ class Sleuth(object):
                                 logger.info("<Deleted Note> %s:%s" % (note.id, note.text))
                             else:
                                 logger.info('Comment Unknown: %s' % commentxml.id)
-                    else:
-                        self.log_unknown_story(storyxml)
 
             elif activity.event_type in ['move_from_project']:
                 # because all the projects are mixed together move_from_project event_type can be ignored
