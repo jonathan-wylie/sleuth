@@ -143,13 +143,13 @@ class Sleuth(object):
         self.load_stories_thread = threading.Thread(target=self.load_stories())
         self.load_stories_thread.daemon = True
         self.load_stories_thread.start()
-    
+
     def _set_last_updated(self):
         last_updated = datetime.datetime.now()
         if time.daylight:
             last_updated = last_updated - datetime.timedelta(hours=1)
         self._last_updated = last_updated
-        
+
     def load_stories(self):
         ''' Reload the stories from the trackers
         '''
@@ -164,7 +164,7 @@ class Sleuth(object):
             logger.warning('Story unknown: %s' % storyxml.id)
             if __debug__:
                 logger.debug(pt_api.to_str(storyxml))
-    
+
     def getStory(self, storyxml):
         ''' If the story is tracked return it
             else return None and log the unknwon story
@@ -173,6 +173,16 @@ class Sleuth(object):
             return self.stories[storyxml.id]
         else:
             self.log_unknown_story(storyxml)
+
+    def getTask(self, story, taskxml):
+        if taskxml.id in story.tasks:
+            task = story.tasks[taskxml.id]
+            return task
+        else:
+            logger.info('Task unknown: %s' % taskxml.id)
+            return None
+
+
 
     def process_activity(self, activity):
         ''' To be run in a thread, process all the activities in the queue
@@ -235,12 +245,10 @@ class Sleuth(object):
                     if story:
                         logger.info('%s: %s' % (activity.event_type, storyxml.id))
                         for taskxml in storyxml.tasks.iterchildren():
-                            if taskxml.id in story.tasks:
-                                task = story.tasks[taskxml.id]
+                            task = self.getTask(story, taskxml)
+                            if task:
                                 task.update(taskxml)
                                 logger.info("<Updated Task> %s:%s" % (task.id, task.description))
-                            else:
-                                logger.info('Task unknown: %s' % taskxml.id)
 
             elif activity.event_type == 'task_delete':
                 for storyxml in activity.stories.iterchildren():
@@ -248,12 +256,10 @@ class Sleuth(object):
                     if story:
                         logger.info('%s: %s' % (activity.event_type, storyxml.id))
                         for taskxml in storyxml.tasks.iterchildren():
-                            if taskxml.id in story.tasks:
-                                task = story.tasks[taskxml.id]
+                            task = self.getTask(story, taskxml)
+                            if task:
                                 del story.tasks[taskxml.id]
                                 logger.info("<Deleted Task> %s:%s" % (task.id, task.description))
-                            else:
-                                logger.info('Task unknown: %s' % taskxml.id)
 
             elif activity.event_type == 'comment_delete':
                 for storyxml in activity.stories.iterchildren():
@@ -280,10 +286,10 @@ class Sleuth(object):
     def collect_task_updates(self):
         """ Update the stories since the last time this method was called.
         """
-        
+
         for project_id in self.project_ids:
             last_updated = self._last_updated
-            
+
             activitiesxml = pt_api.get_project_activities_v3(project_id, last_updated, self.token)
             for activityxml in activitiesxml.iterchildren():
                 logger.info(activityxml.event_type)
@@ -293,7 +299,7 @@ class Sleuth(object):
                 if activityxml.event_type in ['task_delete', 'task_edit', 'task_create', 'comment_delete']:
                     logger.info(activityxml.event_type)
                     self.process_activity(activityxml)
-        
+
         self._set_last_updated()
 
 
