@@ -182,8 +182,6 @@ class Sleuth(object):
             logger.info('Task unknown: %s' % taskxml.id)
             return None
 
-
-
     def process_activity(self, activity):
         ''' To be run in a thread, process all the activities in the queue
         '''
