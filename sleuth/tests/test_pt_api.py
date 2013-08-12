@@ -256,7 +256,7 @@ class Test_get_project_activities(unittest2.TestCase):
         # confirm
         APICall.assert_called_once_with('https://www.pivotaltracker.com/services/v4/projects/1/activities?occurred_since_date=2013/8/07%0020:33:30%20GMT',
                                         '--token--')
-        self.assertEqual(activitiesxml, objectify.fromstring.return_value)
+        self.assertEqual(activitiesxml, objectify.return_value)
 
 
 @patch('sleuth.pt_api.APICall')
@@ -275,7 +275,7 @@ class Test_get_project_activities_v3(unittest2.TestCase):
         # confirm
         APICall.assert_called_once_with('https://www.pivotaltracker.com/services/v3/projects/1/activities?occurred_since_date=2013/8/07%0020:33:30%20GMT',
                                         '--token--')
-        self.assertEqual(activitiesxml, objectify.fromstring.return_value)
+        self.assertEqual(activitiesxml, objectify.return_value)
 
 
 @patch('sleuth.pt_api.lxml.etree.tostring')
@@ -291,3 +291,25 @@ class Test_to_str(unittest2.TestCase):
         # confirm
         tostring.assert_called_once_with(thing_to_str)
         self.assertEqual(tostring.return_value, thing_stringed)
+
+
+@patch('sleuth.pt_api.lxml_objectify')
+@patch('sleuth.pt_api.logger')
+class Test_objectify(unittest2.TestCase):
+    
+    def test_ok(self, logger, lxml_objectify):
+        # action
+        objectified = pt_api.objectify(MagicMock())
+        
+        # confirm
+        self.assertEqual(lxml_objectify.fromstring.return_value, objectified)
+
+    def test_fail(self, logger, lxml_objectify):
+        # setup
+        lxml_objectify.fromstring.side_effect = Exception
+        
+        # action
+        objectified = pt_api.objectify(MagicMock())
+        
+        # confirm
+        self.assertIsNone(objectified)

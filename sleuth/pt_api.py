@@ -3,7 +3,7 @@ import logging
 import subprocess
 import urllib
 import time
-from lxml import objectify
+from lxml import objectify as lxml_objectify
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +64,13 @@ def get_stories(project_id, block, token, story_constructor=lambda project_id, s
     if block == 'icebox':
         # icebox stories are 'unscheduled', can't query directly for icebox stories, like we can with the other blocks
         data = StorySearch(project_id).filter_by_states(['unscheduled']).get(token)
-        storiesxml = objectify.fromstring(data)
-        stories.append([story_constructor(project_id, storyxml) for storyxml in storiesxml.iterchildren()])
+        storiesxml = objectify(data)
+        if storiesxml is not None:
+            stories.append([story_constructor(project_id, storyxml) for storyxml in storiesxml.iterchildren()])
     else:
         url = '%s/projects/%s/iterations/%s' % (URL_API3, project_id, block)
         data = APICall(url, token)
-        iterations = objectify.fromstring(data)
+        iterations = objectify(data)
         for iteration in iterations.iterchildren():
             stories.append([story_constructor(project_id, storyxml) for storyxml in iteration.stories.iterchildren()])
 
@@ -81,7 +82,7 @@ def get_project_activities(project_id, since, token):
     since = since.strftime('%Y/') + str(since.month) + since.strftime('/%d') + '%00' + since.strftime('%H:%M:%S') + '%20' + time.tzname[0]
     data = APICall('%s/projects/%s/activities?occurred_since_date=%s' % (URL_API4, project_id, since),
                    token)
-    activitiesxml = objectify.fromstring(data)
+    activitiesxml = objectify(data)
     return activitiesxml
 
 
@@ -90,9 +91,19 @@ def get_project_activities_v3(project_id, since, token):
     since = since.strftime('%Y/') + str(since.month) + since.strftime('/%d') + '%00' + since.strftime('%H:%M:%S') + '%20' + time.tzname[0]
     data = APICall('%s/projects/%s/activities?occurred_since_date=%s' % (URL_API3, project_id, since),
                    token)
-    activitiesxml = objectify.fromstring(data)
+    activitiesxml = objectify(data)
     return activitiesxml
 
 
+def objectify(some_xml):
+    ''' Safely objectify the xml
+    '''
+    try:
+        return lxml_objectify.fromstring(some_xml)
+    except:
+        logger.error("Problem objectifying the xml \n %s" % some_xml)
+        return None
+    
+    
 def to_str(objectified_object):
     return lxml.etree.tostring(objectified_object)
