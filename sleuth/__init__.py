@@ -167,7 +167,17 @@ class Sleuth(object):
             logger.warning('Story unknown: %s' % storyxml.id)
             if __debug__:
                 logger.debug(pt_api.to_str(storyxml))
+    
+    def log_unknown_task(self, taskxml):
+            logger.warning('Task unknown: %s' % taskxml.id)
+            if __debug__:
+                logger.debug(pt_api.to_str(taskxml))
 
+    def log_unknown_comment(self, commentxml):
+            logger.warning('Comment unknown: %s' % commentxml.id)
+            if __debug__:
+                logger.debug(pt_api.to_str(commentxml))
+                
     def getStory(self, storyxml):
         ''' If the story is tracked return it
             else return None and log the unknwon story
@@ -182,7 +192,7 @@ class Sleuth(object):
             task = story.tasks[taskxml.id]
             return task
         else:
-            logger.info('Task unknown: %s' % taskxml.id)
+            self.log_unknown_task(taskxml)
             return None
 
     def process_activity(self, activity):
@@ -273,6 +283,7 @@ class Sleuth(object):
                                 del story.notes[commentxml.id]
                                 logger.info("<Deleted Note> %s:%s" % (note.id, note.text))
                             else:
+                                self.log_unknown_comment(commentxml)
                                 logger.info('Comment Unknown: %s' % commentxml.id)
 
             elif activity.event_type in ['move_from_project']:
