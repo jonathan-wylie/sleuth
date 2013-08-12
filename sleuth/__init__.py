@@ -284,7 +284,6 @@ class Sleuth(object):
                                 logger.info("<Deleted Note> %s:%s" % (note.id, note.text))
                             else:
                                 self.log_unknown_comment(commentxml)
-                                logger.info('Comment Unknown: %s' % commentxml.id)
 
             elif activity.event_type in ['move_from_project']:
                 # because all the projects are mixed together move_from_project event_type can be ignored
