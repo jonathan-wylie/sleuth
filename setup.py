@@ -39,7 +39,11 @@ setup(
     namespace_packages=[],
     test_suite="sleuth.tests",
     install_requires=requires,
-    entry_points="""""",
+    entry_points={
+        'console_scripts': [
+            'start-sleuth = sleuth:main',
+        ]
+    },
     scripts=[],
     setup_requires=["setuptools_git >= 0.3"],
 )

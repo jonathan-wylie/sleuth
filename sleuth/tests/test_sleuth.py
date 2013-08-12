@@ -1,6 +1,6 @@
 from mock import patch, call, MagicMock, Mock
 import unittest2
-from sleuth import Sleuth, Story, Task
+from sleuth import Sleuth, Story, Task, main
 
 
 def flatten_list(alist):
@@ -251,15 +251,34 @@ class Test_Sleuth(unittest2.TestCase):
         logger.warning.assert_called_once_with('Unknown event type: sdhghsldjh176581347687sghfvsdjlh87e5923878')
     
     @patch('sleuth.Sleuth.process_activity')
-    def test_collect_task_stories(self, process_activity, log_unknown_story, Story, pt_api):
+    @patch('sleuth.Sleuth._set_last_updated')
+    def test_collect_task_stories(self, _set_last_updated, process_activity, log_unknown_story, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
-
+        v3_project1_activities = [MagicMock()]
+        v4_project1_activities = [MagicMock()]
+        v3_project2_activities = [MagicMock()]
+        v4_project2_activities = [MagicMock(), MagicMock(event_type='task_delete'), MagicMock(event_type='task_edit'),
+                                  MagicMock(event_type='task_create'), MagicMock(event_type='comment_delete')]
+        v3_project1_activities_xml = MagicMock(iterchildren=MagicMock(return_value=v3_project1_activities))
+        v4_project1_activities_xml = MagicMock(iterchildren=MagicMock(return_value=v4_project1_activities))
+        v3_project2_activities_xml = MagicMock(iterchildren=MagicMock(return_value=v3_project2_activities))
+        v4_project2_activities_xml = MagicMock(iterchildren=MagicMock(return_value=v4_project2_activities))
+        
+        pt_api.get_project_activities_v3.side_effect = [v3_project1_activities_xml, v3_project2_activities_xml]
+        pt_api.get_project_activities.side_effect = [v4_project1_activities_xml, v4_project2_activities_xml]
+        
         # action
         sleuth.collect_task_updates()
 
         # confirm
+        self.assertListEqual([call(1, None, '--token--'), call(2, None, '--token--')], pt_api.get_project_activities_v3.call_args_list)
+        self.assertListEqual([call(1, None, '--token--'), call(2, None, '--token--')], pt_api.get_project_activities.call_args_list)
+        expected_process_activity_calls = []
+        for activity in v3_project1_activities + v3_project2_activities + v4_project2_activities[1:]:
+            expected_process_activity_calls.append(call(activity))
+        self.assertListEqual(expected_process_activity_calls, process_activity.call_args_list)
         
         
 class Test_Story(unittest2.TestCase):
@@ -282,9 +301,6 @@ class Test_Story(unittest2.TestCase):
         taskxml1 = MagicMock()
         taskxml2 = MagicMock()
         storyxml.tasks.iterchildren.return_value = [taskxml1, taskxml2]
-
-        # note = Note(notexml.id, notexml['text'].text, notexml.author, notexml.noted_at)
-        #         notes[note.id] = note
 
         # action
         data = Story.get_data_from_story_xml(storyxml)
@@ -524,3 +540,30 @@ class Test_Task(unittest2.TestCase):
 
         #confirm
         self.assertEqual(taskxml.position, task.position)
+
+
+@patch('sleuth.Sleuth')
+@patch('sleuth.continue_tracking')
+@patch('sleuth.time.sleep', MagicMock())
+class Test_main(unittest2.TestCase):
+    
+    def test(self, continue_tracking, Sleuth):
+        # setup
+        continue_tracking.side_effect = [True, True, False]
+        # action
+        main(['--projects', '1', '2', '--token', 'thetoken'])
+        
+        # confirm
+        Sleuth.assert_called_once_with(project_ids=[1, 2], track_blocks=['current', 'backlog'], token='thetoken')
+        self.assertListEqual([call(), call()], Sleuth.return_value.collect_task_updates.call_args_list)
+
+    @patch('sleuth.sys.argv', ['start-sleuth', '--projects', '1', '2', '--token', 'thetoken'])
+    def test_with_sys_args(self, continue_tracking, Sleuth):
+        # setup
+        continue_tracking.side_effect = [True, True, False]
+        # action
+        main(['--projects', '1', '2', '--token', 'thetoken'])
+        
+        # confirm
+        Sleuth.assert_called_once_with(project_ids=[1, 2], track_blocks=['current', 'backlog'], token='thetoken')
+        self.assertListEqual([call(), call()], Sleuth.return_value.collect_task_updates.call_args_list)

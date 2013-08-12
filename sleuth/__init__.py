@@ -1,9 +1,11 @@
 from threading import Lock
+import argparse
 import datetime
+import logging
 import pt_api
+import sys
 import threading
 import time
-import logging
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
@@ -134,6 +136,7 @@ def _flatten_list(alist):
 class Sleuth(object):
     '''This class receives the activity xml parsed from the web app, and updates all the data'''
     def __init__(self, project_ids, track_blocks, token):
+        self._last_updated = None
         self._set_last_updated()
         self.project_ids = project_ids
         self.token = token
@@ -301,13 +304,18 @@ class Sleuth(object):
         self._set_last_updated()
 
 
-if __name__ == '__main__':
-    import argparse
+def continue_tracking():
+    return True
+
+
+def main(input_args=None):
+    if input_args is None:
+        input_args = sys.argv[1:]
     parser = argparse.ArgumentParser(description='Sleuth')
     parser.add_argument('--token', help='The pivotal tracker API token')
     parser.add_argument('--projects', nargs='+', type=int, help='The pivotal tracker project IDs')
-    args = parser.parse_args()
+    args = parser.parse_args(input_args)
     sleuth = Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog'], token=args.token)
-    while True:
+    while continue_tracking():
         sleuth.collect_task_updates()
         time.sleep(1)
