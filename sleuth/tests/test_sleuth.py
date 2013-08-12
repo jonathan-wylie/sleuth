@@ -301,6 +301,31 @@ class Test_Sleuth(unittest2.TestCase):
             expected_process_activity_calls.append(call(activity))
         self.assertListEqual(expected_process_activity_calls, process_activity.call_args_list)
 
+    @patch('sleuth.Sleuth.process_activity')
+    @patch('sleuth.Sleuth._set_last_updated')
+    def test_collect_task_stories_None(self, _set_last_updated, process_activity, Story, pt_api):
+        # setup
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth.stories = self.stories
+        v4_project1_activities = [MagicMock()]
+        v3_project2_activities = [MagicMock()]
+        v4_project1_activities_xml = MagicMock(iterchildren=MagicMock(return_value=v4_project1_activities))
+        v3_project2_activities_xml = MagicMock(iterchildren=MagicMock(return_value=v3_project2_activities))
+        
+        pt_api.get_project_activities_v3.side_effect = [None, v3_project2_activities_xml]
+        pt_api.get_project_activities.side_effect = [v4_project1_activities_xml, None]
+        
+        # action
+        sleuth.collect_task_updates()
+
+        # confirm
+        self.assertListEqual([call(1, None, '--token--'), call(2, None, '--token--')], pt_api.get_project_activities_v3.call_args_list)
+        self.assertListEqual([call(1, None, '--token--'), call(2, None, '--token--')], pt_api.get_project_activities.call_args_list)
+        expected_process_activity_calls = []
+        for activity in v3_project2_activities:
+            expected_process_activity_calls.append(call(activity))
+        self.assertListEqual(expected_process_activity_calls, process_activity.call_args_list)
+
 
 class Test_Story(unittest2.TestCase):
 
