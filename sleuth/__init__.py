@@ -302,14 +302,16 @@ class Sleuth(object):
             last_updated = self._last_updated
 
             activitiesxml = pt_api.get_project_activities_v3(project_id, last_updated, self.token)
-            for activityxml in activitiesxml.iterchildren():
-                logger.info(activityxml.event_type)
-                self.process_activity(activityxml)
-            activitiesxml = pt_api.get_project_activities(project_id, last_updated, self.token)
-            for activityxml in activitiesxml.iterchildren():
-                if activityxml.event_type in ['task_delete', 'task_edit', 'task_create', 'comment_delete']:
+            if activitiesxml is not None:
+                for activityxml in activitiesxml.iterchildren():
                     logger.info(activityxml.event_type)
                     self.process_activity(activityxml)
+            activitiesxml = pt_api.get_project_activities(project_id, last_updated, self.token)
+            if activitiesxml is not None:
+                for activityxml in activitiesxml.iterchildren():
+                    if activityxml.event_type in ['task_delete', 'task_edit', 'task_create', 'comment_delete']:
+                        logger.info(activityxml.event_type)
+                        self.process_activity(activityxml)
 
         self._set_last_updated()
 
