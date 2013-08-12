@@ -315,7 +315,7 @@ def main(input_args=None):
     parser.add_argument('--token', help='The pivotal tracker API token')
     parser.add_argument('--projects', nargs='+', type=int, help='The pivotal tracker project IDs')
     args = parser.parse_args(input_args)
-    sleuth = Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog'], token=args.token)
+    sleuth = Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog', 'icebox'], token=args.token)
     while continue_tracking():
         sleuth.collect_task_updates()
         time.sleep(1)
