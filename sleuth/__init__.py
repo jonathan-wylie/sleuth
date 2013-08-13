@@ -7,9 +7,8 @@ import sys
 import threading
 import time
 
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
-logger = logging.getLogger('sleuth')
+
+logger = logging.getLogger(__name__)
 
 
 class Note(object):
@@ -297,7 +296,7 @@ class Sleuth(object):
     def collect_task_updates(self):
         """ Update the stories since the last time this method was called.
         """
-
+        logger.warning("something")
         for project_id in self.project_ids:
             last_updated = self._last_updated
 
@@ -326,7 +325,29 @@ def main(input_args=None):
     parser = argparse.ArgumentParser(description='Sleuth')
     parser.add_argument('--token', help='The pivotal tracker API token')
     parser.add_argument('--projects', nargs='+', type=int, help='The pivotal tracker project IDs')
+    parser.add_argument('--log-file', dest='log_file', type=str, default=None, help='Where to log the output to.')
+    #parser.add_argument('--log-file-level', dest='log_file_level', type=str, default=logging.INFO, help='The file logger level.')
+    #parser.add_argument('--log-level', dest='log_level', type=str, default=None, help='The stream logger level.')
     args = parser.parse_args(input_args)
+    
+#     logging.basicConfig(level=logging.INFO,
+#                         format="%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+      
+    stream_handler = logging.StreamHandler()
+    formatter = logging.Formatter("%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
+    stream_handler.setFormatter(formatter)
+    stream_handler.setLevel(logging.INFO)
+    logger.addHandler(stream_handler)
+   
+    if args.log_file:
+        file_handler = logging.FileHandler(args.log_file)
+        formatter = logging.Formatter("%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(logging.WARNING)
+        logger.addHandler(file_handler)
+
     sleuth = Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog', 'icebox'], token=args.token)
     while continue_tracking():
         sleuth.collect_task_updates()
