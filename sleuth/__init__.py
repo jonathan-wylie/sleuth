@@ -296,7 +296,6 @@ class Sleuth(object):
     def collect_task_updates(self):
         """ Update the stories since the last time this method was called.
         """
-        logger.warning("something")
         for project_id in self.project_ids:
             last_updated = self._last_updated
 
