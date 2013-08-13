@@ -103,7 +103,7 @@ def objectify(some_xml):
     except:
         logger.error("Problem objectifying the xml \n %s" % some_xml)
         return None
-    
-    
+
+
 def to_str(objectified_object):
     return lxml.etree.tostring(objectified_object)

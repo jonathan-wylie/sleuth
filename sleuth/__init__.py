@@ -2,6 +2,7 @@ from threading import Lock
 import argparse
 import datetime
 import logging
+import operator
 import pt_api
 import sys
 import threading
@@ -166,7 +167,7 @@ class Sleuth(object):
             logger.warning('Story unknown: %s' % storyxml.id)
             if __debug__:
                 logger.debug(pt_api.to_str(storyxml))
-    
+
     def log_unknown_task(self, taskxml):
             logger.warning('Task unknown: %s' % taskxml.id)
             if __debug__:
@@ -176,7 +177,7 @@ class Sleuth(object):
             logger.warning('Comment unknown: %s' % commentxml.id)
             if __debug__:
                 logger.debug(pt_api.to_str(commentxml))
-                
+
     def getStory(self, storyxml):
         ''' If the story is tracked return it
             else return None and log the unknwon story
@@ -296,22 +297,26 @@ class Sleuth(object):
     def collect_task_updates(self):
         """ Update the stories since the last time this method was called.
         """
+        last_updated = self._last_updated
+        self._set_last_updated()
+        if __debug__:
+            logger.debug(last_updated)
         for project_id in self.project_ids:
-            last_updated = self._last_updated
-
             activitiesxml = pt_api.get_project_activities_v3(project_id, last_updated, self.token)
             if activitiesxml is not None:
-                for activityxml in activitiesxml.iterchildren():
+                activities = [activityxml for activityxml in activitiesxml.iterchildren()]
+                activities.sort(key=operator.attrgetter('occurred_at'))
+                for activityxml in activities:
                     logger.info(activityxml.event_type)
                     self.process_activity(activityxml)
             activitiesxml = pt_api.get_project_activities(project_id, last_updated, self.token)
             if activitiesxml is not None:
-                for activityxml in activitiesxml.iterchildren():
+                activities = [activityxml for activityxml in activitiesxml.iterchildren()]
+                activities.sort(key=operator.attrgetter('occurred_at'))
+                for activityxml in activities:
                     if activityxml.event_type in ['task_delete', 'task_edit', 'task_create', 'comment_delete']:
                         logger.info(activityxml.event_type)
                         self.process_activity(activityxml)
-
-        self._set_last_updated()
 
 
 def continue_tracking():
@@ -328,18 +333,16 @@ def main(input_args=None):
     #parser.add_argument('--log-file-level', dest='log_file_level', type=str, default=logging.INFO, help='The file logger level.')
     #parser.add_argument('--log-level', dest='log_level', type=str, default=None, help='The stream logger level.')
     args = parser.parse_args(input_args)
-    
-#     logging.basicConfig(level=logging.INFO,
-#                         format="%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
+
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
-      
+
     stream_handler = logging.StreamHandler()
     formatter = logging.Formatter("%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
     stream_handler.setFormatter(formatter)
     stream_handler.setLevel(logging.INFO)
     logger.addHandler(stream_handler)
-   
+
     if args.log_file:
         file_handler = logging.FileHandler(args.log_file)
         formatter = logging.Formatter("%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
