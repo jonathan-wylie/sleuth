@@ -136,9 +136,13 @@ def _flatten_list(alist):
 class Sleuth(object):
     '''This class receives the activity xml parsed from the web app, and updates all the data'''
     def __init__(self, project_ids, track_blocks, token):
-        self._last_updated = None
-        self._set_last_updated()
+        self._last_updated = {}
+        
         self.project_ids = project_ids
+        new_last_updated = datetime.datetime.now()
+        for project_id in self.project_ids:
+            self._set_last_updated(new_last_updated, project_id, 'v3')
+            self._set_last_updated(new_last_updated, project_id, 'v4')
         self.token = token
         self.track_blocks = track_blocks
         self.stories = {}
@@ -147,11 +151,13 @@ class Sleuth(object):
         self.load_stories_thread.daemon = True
         self.load_stories_thread.start()
 
-    def _set_last_updated(self):
-        last_updated = datetime.datetime.now()
+    def _set_last_updated(self, new_last_updated, project_id, version):
         if time.daylight:
-            last_updated = last_updated - datetime.timedelta(hours=1)
-        self._last_updated = last_updated
+            last_updated = new_last_updated - datetime.timedelta(hours=1)
+        self._last_updated['%s-%s' % (project_id, version)] = last_updated
+
+    def _get_last_updated(self, project_id, version):
+        return self._last_updated['%s-%s' % (project_id, version)]
 
     def load_stories(self):
         ''' Reload the stories from the trackers
@@ -199,9 +205,6 @@ class Sleuth(object):
         ''' To be run in a thread, process all the activities in the queue
         '''
         with self.update_lock:
-            logger.info('--------------------')
-            logger.info('')
-            logger.info('--------------------')
             logger.info(activity.description)
 
             if activity.event_type in ['story_update', 'move_into_project']:
@@ -219,14 +222,13 @@ class Sleuth(object):
                     self.stories[story.id] = story
                     logger.info("<Added Story> %s:%s" % (story.id, story.description))
 
-            elif activity.event_type == 'story_delete':
+            elif activity.event_type in ['story_delete', 'multi_story_delete']:
                 for storyxml in activity.stories.iterchildren():
                     logger.info('%s: %s' % (activity.event_type, storyxml.id))
                     story = self.getStory(storyxml)
                     if story:
                         del self.stories[storyxml.id]
                         logger.info("<Deleted Story> %s:%s" % (story.id, story.description))
-
             elif activity.event_type == 'note_create':
                 for storyxml in activity.stories.iterchildren():
                     logger.info('%s: %s' % (activity.event_type, storyxml.id))
@@ -297,24 +299,37 @@ class Sleuth(object):
     def collect_task_updates(self):
         """ Update the stories since the last time this method was called.
         """
-        last_updated = self._last_updated
-        self._set_last_updated()
-        if __debug__:
-            logger.debug(last_updated)
+        def getLastUpdated(project_id, version):
+            new_last_updated = datetime.datetime.now() - datetime.timedelta(seconds=1)
+            last_updated = self._get_last_updated(project_id, version)
+            self._set_last_updated(new_last_updated, project_id, version)
+            if __debug__:
+                logger.debug('%s-%s: %s' % (project_id, version, last_updated))
+            return last_updated
+            
         for project_id in self.project_ids:
+            last_updated = getLastUpdated(project_id, 'v3')
             activitiesxml = pt_api.get_project_activities_v3(project_id, last_updated, self.token)
             if activitiesxml is not None:
                 activities = [activityxml for activityxml in activitiesxml.iterchildren()]
                 activities.sort(key=operator.attrgetter('occurred_at'))
                 for activityxml in activities:
+                    logger.info('--------------------')
+                    logger.info('')
+                    logger.info('--------------------')
                     logger.info(activityxml.event_type)
                     self.process_activity(activityxml)
+
+            last_updated = getLastUpdated(project_id, 'v4')
             activitiesxml = pt_api.get_project_activities(project_id, last_updated, self.token)
             if activitiesxml is not None:
                 activities = [activityxml for activityxml in activitiesxml.iterchildren()]
                 activities.sort(key=operator.attrgetter('occurred_at'))
                 for activityxml in activities:
                     if activityxml.event_type in ['task_delete', 'task_edit', 'task_create', 'comment_delete']:
+                        logger.info('--------------------')
+                        logger.info('')
+                        logger.info('--------------------')
                         logger.info(activityxml.event_type)
                         self.process_activity(activityxml)
 
@@ -340,7 +355,7 @@ def main(input_args=None):
     stream_handler = logging.StreamHandler()
     formatter = logging.Formatter("%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
     stream_handler.setFormatter(formatter)
-    stream_handler.setLevel(logging.INFO)
+    stream_handler.setLevel(logging.DEBUG)
     logger.addHandler(stream_handler)
 
     if args.log_file:

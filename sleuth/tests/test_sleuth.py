@@ -1,6 +1,6 @@
 from mock import patch, call, MagicMock, Mock
 import unittest2
-from sleuth import Sleuth, Story, Task, main
+from sleuth import Sleuth, Story, Task, main, continue_tracking
 
 
 def flatten_list(alist):
@@ -273,7 +273,8 @@ class Test_Sleuth(unittest2.TestCase):
     
     @patch('sleuth.Sleuth.process_activity')
     @patch('sleuth.Sleuth._set_last_updated')
-    def test_collect_task_stories(self, _set_last_updated, process_activity, Story, pt_api):
+    @patch('sleuth.Sleuth._get_last_updated')
+    def test_collect_task_stories(self, _get_last_updated, _set_last_updated, process_activity, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
@@ -294,8 +295,8 @@ class Test_Sleuth(unittest2.TestCase):
         sleuth.collect_task_updates()
 
         # confirm
-        self.assertListEqual([call(1, None, '--token--'), call(2, None, '--token--')], pt_api.get_project_activities_v3.call_args_list)
-        self.assertListEqual([call(1, None, '--token--'), call(2, None, '--token--')], pt_api.get_project_activities.call_args_list)
+        self.assertListEqual([call(1, _get_last_updated.return_value, '--token--'), call(2, _get_last_updated.return_value, '--token--')], pt_api.get_project_activities_v3.call_args_list)
+        self.assertListEqual([call(1, _get_last_updated.return_value, '--token--'), call(2, _get_last_updated.return_value, '--token--')], pt_api.get_project_activities.call_args_list)
         expected_process_activity_calls = []
         for activity in v3_project1_activities + v3_project2_activities + v4_project2_activities[1:]:
             expected_process_activity_calls.append(call(activity))
@@ -303,7 +304,8 @@ class Test_Sleuth(unittest2.TestCase):
 
     @patch('sleuth.Sleuth.process_activity')
     @patch('sleuth.Sleuth._set_last_updated')
-    def test_collect_task_stories_None(self, _set_last_updated, process_activity, Story, pt_api):
+    @patch('sleuth.Sleuth._get_last_updated')
+    def test_collect_task_stories_None(self, _get_last_updated, _set_last_updated, process_activity, Story, pt_api):
         # setup
         sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
         sleuth.stories = self.stories
@@ -319,8 +321,8 @@ class Test_Sleuth(unittest2.TestCase):
         sleuth.collect_task_updates()
 
         # confirm
-        self.assertListEqual([call(1, None, '--token--'), call(2, None, '--token--')], pt_api.get_project_activities_v3.call_args_list)
-        self.assertListEqual([call(1, None, '--token--'), call(2, None, '--token--')], pt_api.get_project_activities.call_args_list)
+        self.assertListEqual([call(1, _get_last_updated.return_value, '--token--'), call(2, _get_last_updated.return_value, '--token--')], pt_api.get_project_activities_v3.call_args_list)
+        self.assertListEqual([call(1, _get_last_updated.return_value, '--token--'), call(2, _get_last_updated.return_value, '--token--')], pt_api.get_project_activities.call_args_list)
         expected_process_activity_calls = []
         for activity in v3_project2_activities:
             expected_process_activity_calls.append(call(activity))
@@ -613,3 +615,9 @@ class Test_main(unittest2.TestCase):
         # confirm
         Sleuth.assert_called_once_with(project_ids=[1, 2], track_blocks=['current', 'backlog', 'icebox'], token='thetoken')
         self.assertListEqual([call(), call()], Sleuth.return_value.collect_task_updates.call_args_list)
+
+
+class Test_continue_tracking(unittest2.TestCase):
+    
+    def test(self):
+        self.assertTrue(continue_tracking())
