@@ -350,12 +350,12 @@ def main(input_args=None):
     args = parser.parse_args(input_args)
 
     logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     stream_handler = logging.StreamHandler()
     formatter = logging.Formatter("%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
     stream_handler.setFormatter(formatter)
-    stream_handler.setLevel(logging.DEBUG)
+    stream_handler.setLevel(logging.INFO)
     logger.addHandler(stream_handler)
 
     if args.log_file:
