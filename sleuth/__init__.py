@@ -137,7 +137,7 @@ class Sleuth(object):
     '''This class receives the activity xml parsed from the web app, and updates all the data'''
     def __init__(self, project_ids, track_blocks, token):
         self._last_updated = {}
-        
+
         self.project_ids = project_ids
         new_last_updated = datetime.datetime.now()
         for project_id in self.project_ids:
@@ -306,7 +306,7 @@ class Sleuth(object):
             if __debug__:
                 logger.debug('%s-%s: %s' % (project_id, version, last_updated))
             return last_updated
-            
+
         for project_id in self.project_ids:
             last_updated = getLastUpdated(project_id, 'v3')
             activitiesxml = pt_api.get_project_activities_v3(project_id, last_updated, self.token)
@@ -339,30 +339,38 @@ def continue_tracking():
 
 
 def main(input_args=None):
+
+    def parse_logging_level(log_level):
+        numeric_level = getattr(logging, log_level.upper(), None)
+        if not isinstance(numeric_level, int):
+            raise ValueError('Invalid log level: %s' % log_level)
+        return numeric_level
+
+
     if input_args is None:
         input_args = sys.argv[1:]
     parser = argparse.ArgumentParser(description='Sleuth')
     parser.add_argument('--token', help='The pivotal tracker API token')
     parser.add_argument('--projects', nargs='+', type=int, help='The pivotal tracker project IDs')
     parser.add_argument('--log-file', dest='log_file', type=str, default=None, help='Where to log the output to.')
-    #parser.add_argument('--log-file-level', dest='log_file_level', type=str, default=logging.INFO, help='The file logger level.')
-    #parser.add_argument('--log-level', dest='log_level', type=str, default=None, help='The stream logger level.')
+    parser.add_argument('--log-file-level', dest='log_file_level', type=str, default='WARNING', help='The file logger level.')
+    parser.add_argument('--log-level', dest='log_level', type=str, default='INFO', help='The stream logger level.')
     args = parser.parse_args(input_args)
 
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     stream_handler = logging.StreamHandler()
     formatter = logging.Formatter("%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
     stream_handler.setFormatter(formatter)
-    stream_handler.setLevel(logging.INFO)
+    stream_handler.setLevel(parse_logging_level(args.log_level))
     logger.addHandler(stream_handler)
 
     if args.log_file:
         file_handler = logging.FileHandler(args.log_file)
         formatter = logging.Formatter("%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s| %(filename)s:%(lineno)-4s | %(message)s")
         file_handler.setFormatter(formatter)
-        file_handler.setLevel(logging.WARNING)
+        file_handler.setLevel(parse_logging_level(args.log_file_level))
         logger.addHandler(file_handler)
 
     sleuth = Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog', 'icebox'], token=args.token)
