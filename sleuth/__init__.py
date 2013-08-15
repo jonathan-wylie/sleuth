@@ -135,9 +135,10 @@ def _flatten_list(alist):
 
 class Sleuth(object):
     '''This class receives the activity xml parsed from the web app, and updates all the data'''
-    def __init__(self, project_ids, track_blocks, token):
+    def __init__(self, project_ids, track_blocks, token, overlap_seconds):
         self._last_updated = {}
-
+        self.processed_activities = []
+        self.overlap_seconds = overlap_seconds
         self.project_ids = project_ids
         new_last_updated = datetime.datetime.now()
         for project_id in self.project_ids:
@@ -205,8 +206,18 @@ class Sleuth(object):
         ''' To be run in a thread, process all the activities in the queue
         '''
         with self.update_lock:
+            if activity.id in self.processed_activities:
+                if __debug__:
+                    logger.debug('Ignoring repeat activity %s.' % activity.id)
+                    return
+            if __debug__:
+                logger.debug(pt_api.to_str(activity))
+            logger.info('--------------------')
+            logger.info('')
+            logger.info('--------------------')
+            logger.info(activity.event_type)
             logger.info(activity.description)
-
+            self.processed_activities.append(activity.id)
             if activity.event_type in ['story_update', 'move_into_project']:
                 for storyxml in activity.stories.iterchildren():
                     story = self.getStory(storyxml)
@@ -300,7 +311,7 @@ class Sleuth(object):
         """ Update the stories since the last time this method was called.
         """
         def getLastUpdated(project_id, version):
-            new_last_updated = datetime.datetime.now() - datetime.timedelta(seconds=1)
+            new_last_updated = datetime.datetime.now() - datetime.timedelta(seconds=self.overlap_seconds)
             last_updated = self._get_last_updated(project_id, version)
             self._set_last_updated(new_last_updated, project_id, version)
             if __debug__:
@@ -314,10 +325,6 @@ class Sleuth(object):
                 activities = [activityxml for activityxml in activitiesxml.iterchildren()]
                 activities.sort(key=operator.attrgetter('occurred_at'))
                 for activityxml in activities:
-                    logger.info('--------------------')
-                    logger.info('')
-                    logger.info('--------------------')
-                    logger.info(activityxml.event_type)
                     self.process_activity(activityxml)
 
             last_updated = getLastUpdated(project_id, 'v4')
@@ -327,9 +334,8 @@ class Sleuth(object):
                 activities.sort(key=operator.attrgetter('occurred_at'))
                 for activityxml in activities:
                     if activityxml.event_type in ['task_delete', 'task_edit', 'task_create', 'comment_delete']:
-                        logger.info('--------------------')
-                        logger.info('')
-                        logger.info('--------------------')
+                        if __debug__:
+                            logger.debug(pt_api.to_str(activityxml))
                         logger.info(activityxml.event_type)
                         self.process_activity(activityxml)
 
@@ -352,6 +358,7 @@ def main(input_args=None):
     parser = argparse.ArgumentParser(description='Sleuth')
     parser.add_argument('--token', help='The pivotal tracker API token')
     parser.add_argument('--projects', nargs='+', type=int, help='The pivotal tracker project IDs')
+    parser.add_argument('--overlap-seconds', dest='overlap_seconds', type=int, default=10, help='Seconds to overlap activity requests. To avoid missing some activities')
     parser.add_argument('--log-file', dest='log_file', type=str, default=None, help='Where to log the output to.')
     parser.add_argument('--log-file-level', dest='log_file_level', type=str, default='WARNING', help='The file logger level.')
     parser.add_argument('--log-level', dest='log_level', type=str, default='INFO', help='The stream logger level.')
@@ -373,7 +380,7 @@ def main(input_args=None):
         file_handler.setLevel(parse_logging_level(args.log_file_level))
         logger.addHandler(file_handler)
 
-    sleuth = Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog', 'icebox'], token=args.token)
+    sleuth = Sleuth(project_ids=args.projects, track_blocks=['current', 'backlog', 'icebox'], token=args.token, overlap_seconds=args.overlap_seconds)
     while continue_tracking():
         sleuth.collect_task_updates()
         time.sleep(1)
