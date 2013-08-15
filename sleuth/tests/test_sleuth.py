@@ -1,5 +1,7 @@
 from mock import patch, call, MagicMock, Mock
 import unittest2
+import logging
+
 from sleuth import Sleuth, Story, Task, main, continue_tracking
 
 
@@ -38,7 +40,7 @@ class Test_Sleuth(unittest2.TestCase):
         pt_api.get_stories.side_effect = [self.project1_current, self.project1_backlog, self.project2_current, self.project2_backlog]
 
         # action
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
 
         # confirm
         self.assertEqual(sleuth.project_ids, self.project_ids)
@@ -55,7 +57,7 @@ class Test_Sleuth(unittest2.TestCase):
 
     def test_process_activity_story_update(self, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         updated_story = MagicMock(id=15)
         activity = MagicMock(event_type='story_update')
@@ -69,7 +71,7 @@ class Test_Sleuth(unittest2.TestCase):
 
     def test_process_activity_story_move_into_project(self, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         moved_story = MagicMock(id=15)
         activity = MagicMock(event_type='move_into_project')
@@ -83,7 +85,7 @@ class Test_Sleuth(unittest2.TestCase):
 
     def test_process_activity_story_create(self, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         created_story = MagicMock(id=19)
         activity = MagicMock(event_type='story_create')
@@ -98,7 +100,7 @@ class Test_Sleuth(unittest2.TestCase):
 
     def test_process_activity_story_delete(self, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         deleted_story = MagicMock(id=15)
         activity = MagicMock(event_type='story_delete')
@@ -113,7 +115,7 @@ class Test_Sleuth(unittest2.TestCase):
     @patch('sleuth.Sleuth.log_unknown_story')
     def test_process_activity_delete_unknown_story(self, log_unknown_story, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = {}
         deleted_story = MagicMock(id=99999)
         activity = MagicMock(event_type='story_delete')
@@ -128,7 +130,7 @@ class Test_Sleuth(unittest2.TestCase):
     @patch('sleuth.Sleuth.log_unknown_story')
     def test_process_activity_note_create_unknown_story(self, log_unknown_story, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = {}
         note_create_story = MagicMock(id=15)
         activity = MagicMock(event_type='note_create')
@@ -142,7 +144,7 @@ class Test_Sleuth(unittest2.TestCase):
 
     def test_process_activity_note_create(self, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         note_create_story = MagicMock(id=15)
         notexml = MagicMock()
@@ -158,7 +160,7 @@ class Test_Sleuth(unittest2.TestCase):
 
     def test_process_activity_task_create(self, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         task_create_story = MagicMock(id=15)
         taskxml = MagicMock()
@@ -174,7 +176,7 @@ class Test_Sleuth(unittest2.TestCase):
 
     def test_process_activity_task_delete(self, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         task_deletes_story = MagicMock(id=15)
         taskxml = MagicMock(id=1)
@@ -191,7 +193,7 @@ class Test_Sleuth(unittest2.TestCase):
     @patch('sleuth.Sleuth.log_unknown_task')
     def test_process_activity_task_delete_unknown_task(self, log_unknown_task, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         task_deletes_story = MagicMock(id=15)
         taskxml = MagicMock(id=99999)
@@ -207,7 +209,7 @@ class Test_Sleuth(unittest2.TestCase):
 
     def test_process_activity_task_update(self, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         task_updated_story = MagicMock(id=15)
         taskxml = MagicMock(id=1, complete=True)
@@ -223,7 +225,7 @@ class Test_Sleuth(unittest2.TestCase):
 
     def test_process_activity_comment_delete(self, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         comment_delete_story = MagicMock(id=15)
         commentxml = MagicMock(id=1)
@@ -240,7 +242,7 @@ class Test_Sleuth(unittest2.TestCase):
     @patch('sleuth.Sleuth.log_unknown_comment')
     def test_process_activity_comment_delete_unknown(self, log_unknown_comment, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         comment_delete_story = MagicMock(id=15)
         commentxml = MagicMock(id=99999)
@@ -257,7 +259,7 @@ class Test_Sleuth(unittest2.TestCase):
     @patch('sleuth.logger')
     def test_process_activity_unknown_event(self, logger, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         comment_delete_story = MagicMock(id=15)
         commentxml = MagicMock(id=1)
@@ -270,13 +272,13 @@ class Test_Sleuth(unittest2.TestCase):
 
         # confirm
         logger.warning.assert_called_once_with('Unknown event type: sdhghsldjh176581347687sghfvsdjlh87e5923878')
-    
+
     @patch('sleuth.Sleuth.process_activity')
     @patch('sleuth.Sleuth._set_last_updated')
     @patch('sleuth.Sleuth._get_last_updated')
     def test_collect_task_stories(self, _get_last_updated, _set_last_updated, process_activity, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         v3_project1_activities = [MagicMock()]
         v4_project1_activities = [MagicMock()]
@@ -287,10 +289,10 @@ class Test_Sleuth(unittest2.TestCase):
         v4_project1_activities_xml = MagicMock(iterchildren=MagicMock(return_value=v4_project1_activities))
         v3_project2_activities_xml = MagicMock(iterchildren=MagicMock(return_value=v3_project2_activities))
         v4_project2_activities_xml = MagicMock(iterchildren=MagicMock(return_value=v4_project2_activities))
-        
+
         pt_api.get_project_activities_v3.side_effect = [v3_project1_activities_xml, v3_project2_activities_xml]
         pt_api.get_project_activities.side_effect = [v4_project1_activities_xml, v4_project2_activities_xml]
-        
+
         # action
         sleuth.collect_task_updates()
 
@@ -307,16 +309,16 @@ class Test_Sleuth(unittest2.TestCase):
     @patch('sleuth.Sleuth._get_last_updated')
     def test_collect_task_stories_None(self, _get_last_updated, _set_last_updated, process_activity, Story, pt_api):
         # setup
-        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token)
+        sleuth = Sleuth(self.project_ids, self.track_blocks, self.token, 10)
         sleuth.stories = self.stories
         v4_project1_activities = [MagicMock()]
         v3_project2_activities = [MagicMock()]
         v4_project1_activities_xml = MagicMock(iterchildren=MagicMock(return_value=v4_project1_activities))
         v3_project2_activities_xml = MagicMock(iterchildren=MagicMock(return_value=v3_project2_activities))
-        
+
         pt_api.get_project_activities_v3.side_effect = [None, v3_project2_activities_xml]
         pt_api.get_project_activities.side_effect = [v4_project1_activities_xml, None]
-        
+
         # action
         sleuth.collect_task_updates()
 
@@ -594,30 +596,53 @@ class Test_Task(unittest2.TestCase):
 @patch('sleuth.continue_tracking')
 @patch('sleuth.time.sleep', MagicMock())
 class Test_main(unittest2.TestCase):
-    
+
     def test(self, continue_tracking, Sleuth):
         # setup
         continue_tracking.side_effect = [True, True, False]
+
         # action
         main(['--projects', '1', '2', '--token', 'thetoken'])
-        
+
         # confirm
-        Sleuth.assert_called_once_with(project_ids=[1, 2], track_blocks=['current', 'backlog', 'icebox'], token='thetoken')
+        Sleuth.assert_called_once_with(project_ids=[1, 2], track_blocks=['current', 'backlog', 'icebox'], token='thetoken', overlap_seconds=10)
         self.assertListEqual([call(), call()], Sleuth.return_value.collect_task_updates.call_args_list)
+
+    @patch('sleuth.logging.FileHandler')
+    @patch('sleuth.logging.getLogger')
+    def test_file_handler(self, getLogger, FileHandler, continue_tracking, Sleuth):
+        # setup
+        continue_tracking.side_effect = [True, True, False]
+
+        # action
+        main(['--projects', '1', '2', '--token', 'thetoken', '--log-file', 'sleuth.log', '--log-file-level', 'debug'])
+
+        # confirm
+        FileHandler.assert_called_once_with('sleuth.log')
+        FileHandler.return_value.setLevel.assert_called_once_with(logging.DEBUG)
+        getLogger.return_value.addHandler.assert_called_with(FileHandler.return_value)
+
+    def test_bad_log_level(self, continue_tracking, Sleuth):
+        # setup
+        continue_tracking.side_effect = [True, True, False]
+
+        # action & confirm
+        self.assertRaises(ValueError, main, ['--projects', '1', '2', '--token', 'thetoken', '--log-level', 'blahdeblah'])
 
     @patch('sleuth.sys.argv', ['start-sleuth', '--projects', '1', '2', '--token', 'thetoken'])
     def test_with_sys_args(self, continue_tracking, Sleuth):
         # setup
         continue_tracking.side_effect = [True, True, False]
+
         # action
-        main(['--projects', '1', '2', '--token', 'thetoken'])
-        
+        main()
+
         # confirm
-        Sleuth.assert_called_once_with(project_ids=[1, 2], track_blocks=['current', 'backlog', 'icebox'], token='thetoken')
+        Sleuth.assert_called_once_with(project_ids=[1, 2], track_blocks=['current', 'backlog', 'icebox'], token='thetoken', overlap_seconds=10)
         self.assertListEqual([call(), call()], Sleuth.return_value.collect_task_updates.call_args_list)
 
 
 class Test_continue_tracking(unittest2.TestCase):
-    
+
     def test(self):
         self.assertTrue(continue_tracking())
