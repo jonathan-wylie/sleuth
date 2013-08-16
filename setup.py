@@ -11,7 +11,6 @@ CHANGES = open(os.path.join(here, "CHANGES.txt")).read()
 VERSION = "0.1"
 
 requires = [
-    "pyramid>=1.4.0",
     "lxml",
     "argparse",
     "nose",
