@@ -16,56 +16,67 @@ class Note(object):
     """Represent a note for a story"""
 
     def __init__(self, note_id, text, author, noted_at):
-        self.id = note_id
-        self.text = text
-        self.author = author
-        self.noted_at = noted_at
+        self.id = int(note_id)
+        self.text = unicode(text)
+        self.author = unicode(author)
+        self.noted_at = unicode(noted_at)
 
 
 class Task(object):
     """ Represent a task for a story
     """
 
-    def __init__(self, task_id, description, created_at, position=None, complete=False):
-        self.id = task_id
-        self.description = description
-        self.position = position
+    def __init__(self, task_id, description, created_at, position=-1, complete=False):
+        self.id = int(task_id)
+        self.description = unicode(description)
+        self.position = int(position)
         self.complete = complete
-        self.created_at = created_at
+        self.created_at = unicode(created_at)
 
     def update(self, taskxml):
         if hasattr(taskxml, 'description'):
             logger.info("Changed task description from %s to %s" % (self.description, taskxml.description))
-            self.description = taskxml.description
+            self.description = unicode(taskxml.description)
         if hasattr(taskxml, 'complete'):
             logger.info("Changed task completion from %s to %s" % (self.complete, taskxml.complete))
             self.complete = taskxml.complete
         if hasattr(taskxml, 'position'):
             logger.info("Changed task position from %s to %s" % (self.position, taskxml.position))
-            self.position = taskxml.position
+            self.position = int(taskxml.position)
 
 
 class Story(object):
     '''The class represents a Pivotal Tracker User Story'''
-
+    
+    DELIVERED = 'delivered'
+    UNSCHEDULED = 'unscheduled'
+    RELEASE = 'release'
+    ACCEPTED = 'accepted'
+    
     @staticmethod
     def get_data_from_story_xml(storyxml):
         data = {}
-        for attribute in ['story_type', 'url', 'estimate', 'current_state', 'description',
-                          'name', 'requested_by', 'owned_by', 'created_at', 'accepted_at', 'labels']:
+        for attribute, attr_type in [('story_type', unicode), ('url', unicode), ('estimate', int), ('current_state', unicode),
+                                     ('description', unicode), ('name', unicode), ('requested_by', unicode), ('owned_by', unicode),
+                                     ('created_at', unicode), ('accepted_at', unicode), ('labels', unicode)]:
             data[attribute] = getattr(storyxml, attribute, None)
+            if  data[attribute] is not None:
+                data[attribute] = attr_type(data[attribute])
+
         notes = {}
         if hasattr(storyxml, 'notes'):
             for notexml in storyxml.notes.iterchildren():
-                note = Note(notexml.id, notexml['text'].text, notexml.author, notexml.noted_at)
+                note = Note(int(notexml.id), unicode(notexml['text'].text), unicode(notexml.author), unicode(notexml.noted_at))
                 notes[note.id] = note
         else:
             notes = None
         data['notes'] = notes
+
         tasks = {}
         if hasattr(storyxml, 'tasks'):
             for taskxml in storyxml.tasks.iterchildren():
-                task = Task(taskxml.id, taskxml.description, taskxml.created_at, position=taskxml.position, complete=taskxml.complete)
+                task = Task(int(taskxml.id), unicode(taskxml.description), unicode(taskxml.created_at),
+                            position=int(taskxml.position), complete=taskxml.complete)
                 tasks[task.id] = task
         else:
             tasks = None
@@ -97,7 +108,7 @@ class Story(object):
         if labels == None:
             self.labels = []
         else:
-            self.labels = str(labels).split(',')
+            self.labels = unicode(labels).split(',')
         if notes == None:
             self.notes = {}
         else:
@@ -112,6 +123,8 @@ class Story(object):
         # Update story attributes
         data = Story.get_data_from_story_xml(storyxml)
         for attribute, new_value in data.items():
+            if attribute == 'labels' and new_value is not None:
+                new_value = new_value.split(',')
             oldValue = getattr(self, attribute)
             if new_value is not None and new_value != oldValue:
                 logger.info("Changed story %s from %s to %s" % (attribute, oldValue, new_value))
@@ -151,6 +164,7 @@ class Sleuth(object):
         self.load_stories_thread = threading.Thread(target=self.load_stories())
         self.load_stories_thread.daemon = True
         self.load_stories_thread.start()
+        self.load_stories_thread.join()
 
     def _set_last_updated(self, new_last_updated, project_id, version):
         if time.daylight:
@@ -163,13 +177,20 @@ class Sleuth(object):
     def load_stories(self):
         ''' Reload the stories from the trackers
         '''
+        from multiprocessing.pool import ThreadPool
+        pool = ThreadPool(processes=10)
+        
         with self.update_lock:
+            results = {}
             for project_id in self.project_ids:
                 for track_block in self.track_blocks:
-                    self.stories.update(dict([(story.id, story) for story in _flatten_list(pt_api.get_stories(project_id, track_block, self.token,
-                                                                                                             story_constructor=Story.create))]))
+                    results["%s-%s" % (project_id, track_block)] = pool.apply_async(pt_api.get_stories, (project_id, track_block, self.token, Story.create))
+            
+            for result_id, result in results.items():
+                self.stories.update(dict([(story.id, story) for story in _flatten_list(result.get())]))
+                logger.info('Loaded stories %s' % (result_id))
         logger.info('Stories are loaded')
-
+        
     def log_unknown_story(self, storyxml):
             logger.warning('Story unknown: %s' % storyxml.id)
             if __debug__:
@@ -246,7 +267,7 @@ class Sleuth(object):
                     story = self.getStory(storyxml)
                     if story:
                         for notexml in storyxml.notes.iterchildren():
-                            note = Note(notexml.id, notexml['text'].text, activity.author, activity.occurred_at)
+                            note = Note(int(notexml.id), unicode(notexml['text'].text), unicode(activity.author), unicode(activity.occurred_at))
                             story.notes[note.id] = note
                             logger.info("<Created Note> %s:%s" % (note.id, note.text))
 
@@ -256,10 +277,10 @@ class Sleuth(object):
                             story = self.getStory(storyxml)
                             if story:
                                 for taskxml in storyxml.tasks.iterchildren():
-                                    position = getattr(taskxml, 'position', None)
+                                    position = getattr(taskxml, 'position', -1)
                                     complete = getattr(taskxml, 'complete', False)
                                     created_at = getattr(taskxml, 'created_at', None)
-                                    task = Task(taskxml.id, taskxml.description, created_at, position=position, complete=complete)
+                                    task = Task(int(taskxml.id), unicode(taskxml.description), created_at, position=position, complete=complete)
                                     story.tasks[task.id] = task
                                     logger.info("<Created Task> %s:%s" % (task.id, task.description))
 
@@ -351,7 +372,6 @@ def main(input_args=None):
         if not isinstance(numeric_level, int):
             raise ValueError('Invalid log level: %s' % log_level)
         return numeric_level
-
 
     if input_args is None:
         input_args = sys.argv[1:]

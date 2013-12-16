@@ -68,11 +68,17 @@ def get_stories(project_id, block, token, story_constructor=lambda project_id, s
         if storiesxml is not None:
             stories.append([story_constructor(project_id, storyxml) for storyxml in storiesxml.iterchildren()])
     else:
-        url = '%s/projects/%s/iterations/%s' % (URL_API3, project_id, block)
+        if block == "done":
+            url = '%s/projects/%s/iterations/%s?offset=-6' % (URL_API3, project_id, block)
+        else:
+            url = '%s/projects/%s/iterations/%s' % (URL_API3, project_id, block)
         data = APICall(url, token)
         iterations = objectify(data)
         for iteration in iterations.iterchildren():
-            stories.append([story_constructor(project_id, storyxml) for storyxml in iteration.stories.iterchildren()])
+            try:
+                stories.append([story_constructor(project_id, storyxml) for storyxml in iteration.stories.iterchildren()])
+            except:
+                logger.exception("Problem loading stories from iteration")
 
     return stories
 
