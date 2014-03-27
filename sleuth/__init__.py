@@ -216,8 +216,8 @@ class Sleuth(object):
 
             for result_id, result in results.items():
                 self.stories.update(dict([(story.id, story)
-                                    for story
-                                    in _flatten_list(result.get())]))
+                                          for story
+                                          in _flatten_list(result.get())]))
                 logger.info('Loaded stories %s' % (result_id))
         logger.info('Stories are loaded')
 
