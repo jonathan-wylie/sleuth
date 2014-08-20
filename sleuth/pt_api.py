@@ -3,6 +3,8 @@ import logging
 import subprocess
 import urllib
 import time
+import requests
+
 from lxml import objectify as lxml_objectify
 
 logger = logging.getLogger(__name__)
@@ -17,12 +19,12 @@ class PT_APIException(Exception):
 
 
 def APICall(url, token):
-    cmd = "curl -H 'X-TrackerToken: %s' -X GET %s"
-    child = subprocess.Popen(cmd % (token, url),
-                             shell=True, stderr=subprocess.PIPE,
-                             stdout=subprocess.PIPE)
-    (stdoutdata, _) = child.communicate()
-    return stdoutdata
+    # cmd = "curl -H 'X-TrackerToken: %s' -X GET %s"
+    # child = subprocess.Popen(cmd % (token, url),
+    #                          shell=True, stderr=subprocess.PIPE,
+    #                          stdout=subprocess.PIPE)
+    # (stdoutdata, _) = child.communicate()
+    return requests.get(url, headers={'X-TrackerToken': token}).text
 
 
 class StorySearch():
@@ -85,13 +87,16 @@ def get_stories(project_id, block, token, story_constructor=lambda project_id,
             url = '%s/projects/%s/iterations/%s' % (URL_API3, project_id, block)
         data = APICall(url, token)
         iterations = objectify(data)
-        for iteration in iterations.iterchildren():
-            try:
-                stories.append([story_constructor(project_id, storyxml)
-                                for storyxml
-                                in iteration.stories.iterchildren()])
-            except:
-                logger.exception("Problem loading stories from iteration")
+        try:
+            for iteration in iterations.iterchildren():
+                try:
+                    stories.append([story_constructor(project_id, storyxml)
+                                    for storyxml
+                                    in iteration.stories.iterchildren()])
+                except:
+                    logger.exception("Problem loading stories from iteration")
+        except Exception:
+            logger.exception(dir(iterations))
 
     return stories
 
@@ -130,9 +135,11 @@ def objectify(some_xml):
     ''' Safely objectify the xml
     '''
     try:
-        return lxml_objectify.fromstring(some_xml)
-    except:
-        logger.error("Problem objectifying the xml \n %s" % some_xml)
+        return lxml_objectify.fromstring(some_xml) #.replace(' encoding="UTF-8"', ""))
+    except Exception:
+        logger.exception("Problem objectifying the xml \n %s" % some_xml)
+        import sys
+        sys.exit(1)
         return None
 
 

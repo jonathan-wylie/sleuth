@@ -213,6 +213,9 @@ class Sleuth(object):
                                                (project_id, track_block,
                                                 self.token, Story.create))
                     results[project_block] = stories
+                    # results[project_block] = pt_api.get_stories(
+                    #     project_id, track_block, self.token, Story.create
+                    # )
 
             for result_id, result in results.items():
                 self.stories.update(dict([(story.id, story)
