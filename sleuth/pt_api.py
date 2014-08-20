@@ -135,7 +135,7 @@ def objectify(some_xml):
     ''' Safely objectify the xml
     '''
     try:
-        return lxml_objectify.fromstring(some_xml) #.replace(' encoding="UTF-8"', ""))
+        return lxml_objectify.fromstring(some_xml.replace(' encoding="UTF-8"', ""))
     except Exception:
         logger.exception("Problem objectifying the xml \n %s" % some_xml)
         import sys
