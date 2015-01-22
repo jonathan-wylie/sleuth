@@ -177,7 +177,7 @@ class Sleuth(object):
         self.processed_activities = []
         self.overlap_seconds = overlap_seconds
         self.project_ids = project_ids
-        new_last_updated = datetime.datetime.now()
+        new_last_updated = datetime.datetime.utcnow()
         for project_id in self.project_ids:
             self._set_last_updated(new_last_updated, project_id, 'v3')
             self._set_last_updated(new_last_updated, project_id, 'v4')
@@ -191,9 +191,7 @@ class Sleuth(object):
         self.load_stories_thread.join()
 
     def _set_last_updated(self, new_last_updated, project_id, version):
-        if time.daylight:
-            last_updated = new_last_updated - datetime.timedelta(hours=1)
-        self._last_updated['%s-%s' % (project_id, version)] = last_updated
+        self._last_updated['%s-%s' % (project_id, version)] = new_last_updated
 
     def _get_last_updated(self, project_id, version):
         return self._last_updated['%s-%s' % (project_id, version)]
@@ -286,9 +284,13 @@ class Sleuth(object):
                 for storyxml in activity.stories.iterchildren():
                     logger.info('%s: %s' % (activity.event_type, storyxml.id))
                     story = Story.create(activity.project_id, storyxml)
-                    self.stories[story.id] = story
-                    logger.info("<Added Story> %s:%s" %
-                                (story.id, story.description))
+                    if story.id not in self.stories:
+                        self.stories[story.id] = story
+                        logger.info("<Added Story> %s:%s" % (
+                            story.id, story.description
+                        ))
+                    else:
+                        logger.info("Ignoring already known about story")
 
             elif activity.event_type in ['story_delete', 'multi_story_delete']:
                 for storyxml in activity.stories.iterchildren():
@@ -308,9 +310,12 @@ class Sleuth(object):
                                         unicode(notexml['text'].text),
                                         unicode(activity.author),
                                         unicode(activity.occurred_at))
-                            story.notes[note.id] = note
-                            logger.info("<Created Note> %s:%s" %
-                                        (note.id, note.text))
+                            if note.id not in story.notes:
+                                story.notes[note.id] = note
+                                logger.info("<Created Note> %s:%s" %
+                                            (note.id, note.text))
+                            else:
+                                logger.info("Ignoring already known about note")
 
             elif activity.event_type == 'task_create':
                 for storyxml in activity.stories.iterchildren():
@@ -326,9 +331,12 @@ class Sleuth(object):
                                         unicode(taskxml.description),
                                         created_at,
                                         position=position, complete=complete)
-                            story.tasks[task.id] = task
-                            logger.info("<Created Task> %s:%s" %
-                                        (task.id, task.description))
+                            if task.id not in story.tasks:
+                                story.tasks[task.id] = task
+                                logger.info("<Created Task> %s:%s" %
+                                            (task.id, task.description))
+                            else:
+                                logger.info("Ignoring already known about task")
 
             elif activity.event_type == 'task_edit':
                 for storyxml in activity.stories.iterchildren():
@@ -386,7 +394,7 @@ class Sleuth(object):
         """
         def getLastUpdated(project_id, version):
             overlap_delta = datetime.timedelta(seconds=self.overlap_seconds)
-            new_last_updated = datetime.datetime.now() - overlap_delta
+            new_last_updated = datetime.datetime.utcnow() - overlap_delta
 
             last_updated = self._get_last_updated(project_id, version)
             self._set_last_updated(new_last_updated, project_id, version)
