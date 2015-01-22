@@ -1,6 +1,5 @@
 import lxml
 import logging
-import subprocess
 import urllib
 import time
 import requests
@@ -19,11 +18,6 @@ class PT_APIException(Exception):
 
 
 def APICall(url, token):
-    # cmd = "curl -H 'X-TrackerToken: %s' -X GET %s"
-    # child = subprocess.Popen(cmd % (token, url),
-    #                          shell=True, stderr=subprocess.PIPE,
-    #                          stdout=subprocess.PIPE)
-    # (stdoutdata, _) = child.communicate()
     return requests.get(url, headers={'X-TrackerToken': token}).text
 
 
@@ -34,8 +28,8 @@ class StorySearch():
         self.story_filter = story_filter
 
     def filter_by_states(self, states):
-        ''' Include only stories in this state
-        '''
+        """ Include only stories in this state
+        """
         states = ','.join(states)
         if self.story_filter is not None:
             story_filter = self.story_filter + ' state:%s' % states
@@ -46,24 +40,24 @@ class StorySearch():
 
     @property
     def url(self):
-        ''' Return the url to make the api call
-        '''
+        """ Return the url to make the api call
+        """
         story_filter = urllib.urlencode({'filter': self.story_filter})
         return '%s/projects/%s/stories?%s' % (URL_API3, self.project_id,
                                               story_filter)
 
     def get(self, token):
-        ''' Actually get the stories
-        '''
+        """ Actually get the stories
+        """
         data = APICall(self.url, token)
         return data
 
 
 def get_stories(project_id, block, token, story_constructor=lambda project_id,
                 storyxml: storyxml):
-    ''' Return the stories for all the stories in the block eg current,
+    """ Return the stories for all the stories in the block eg current,
         for project with ID project_id
-    '''
+    """
     if block not in BLOCKS:
         value_error_tmpl = 'The block value must be in %s, not %s'
         raise ValueError(value_error_tmpl % (BLOCKS, block))
@@ -93,7 +87,7 @@ def get_stories(project_id, block, token, story_constructor=lambda project_id,
                     stories.append([story_constructor(project_id, storyxml)
                                     for storyxml
                                     in iteration.stories.iterchildren()])
-                except:
+                except Exception:
                     logger.exception("Problem loading stories from iteration")
         except Exception:
             logger.exception(dir(iterations))

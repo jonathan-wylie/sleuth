@@ -16,7 +16,8 @@ requires = [
     "nose",
     "unittest2",
     "mock",
-    "coverage"
+    "coverage",
+    "futures"
 ]
 
 setup(

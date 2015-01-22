@@ -1,12 +1,15 @@
 from threading import Lock
-import argparse
 import datetime
 import logging
 import operator
-import pt_api
 import sys
 import threading
 import time
+
+import argparse
+from futures import ThreadPoolExecutor
+
+import pt_api
 
 
 logger = logging.getLogger(__name__)
@@ -50,7 +53,8 @@ class Task(object):
 
 
 class Story(object):
-    '''The class represents a Pivotal Tracker User Story'''
+    """ The class represents a Pivotal Tracker User Story
+    """
 
     DELIVERED = 'delivered'
     UNSCHEDULED = 'unscheduled'
@@ -138,6 +142,18 @@ class Story(object):
         else:
             self.tasks = tasks
 
+    def __str__(self):
+        return """
+        id: %s
+        name: %s
+        story_type: %s
+        current_state: %s
+        accepted_at: %s
+        labels: %s
+        """ % (
+            self.id, self.name, self.story_type, self.current_state, self.accepted_at, self.labels
+        )
+
     def update(self, activity, storyxml):
 
         # Update story attributes
@@ -150,6 +166,7 @@ class Story(object):
                 logger.info("Changed story %s from %s to %s" %
                             (attribute, oldValue, new_value))
                 setattr(self, attribute, new_value)
+                logger.info(str(self))
 
         # Update the project_id if needed
         project_id = activity.project_id
@@ -157,6 +174,7 @@ class Story(object):
             logger.info('Changed story project_id changed from %s to %s' %
                         (self.project_id, project_id))
             self.project_id = project_id
+            logger.info(str(self))
 
 
 def _flatten_list(alist):
@@ -169,9 +187,9 @@ def _flatten_list(alist):
 
 
 class Sleuth(object):
-    '''This class receives the activity xml parsed from the web app,
-       and updates all the data
-    '''
+    """ This class receives the activity xml parsed from the web app,
+        and updates all the data
+    """
     def __init__(self, project_ids, track_blocks, token, overlap_seconds):
         self._last_updated = {}
         self.processed_activities = []
@@ -197,50 +215,51 @@ class Sleuth(object):
         return self._last_updated['%s-%s' % (project_id, version)]
 
     def load_stories(self):
-        ''' Reload the stories from the trackers
-        '''
-        from multiprocessing.pool import ThreadPool
-        pool = ThreadPool(processes=10)
+        """ Reload the stories from the trackers
+        """
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            with self.update_lock:
+                results = {}
+                for project_id in self.project_ids:
+                    for track_block in self.track_blocks:
+                        project_block = "%s-%s" % (project_id, track_block)
+                        stories = executor.submit(pt_api.get_stories,
+                                                  project_id, track_block,
+                                                  self.token, Story.create)
+                        results[project_block] = stories
+                        # results[project_block] = pt_api.get_stories(
+                        #     project_id, track_block, self.token, Story.create
+                        # )
 
-        with self.update_lock:
-            results = {}
-            for project_id in self.project_ids:
-                for track_block in self.track_blocks:
-                    project_block = "%s-%s" % (project_id, track_block)
-                    stories = pool.apply_async(pt_api.get_stories,
-                                               (project_id, track_block,
-                                                self.token, Story.create))
-                    results[project_block] = stories
-                    # results[project_block] = pt_api.get_stories(
-                    #     project_id, track_block, self.token, Story.create
-                    # )
-
-            for result_id, result in results.items():
-                self.stories.update(dict([(story.id, story)
-                                          for story
-                                          in _flatten_list(result.get())]))
-                logger.info('Loaded stories %s' % (result_id))
+                for result_id, result in results.items():
+                    self.stories.update(dict([(story.id, story)
+                                              for story
+                                              in _flatten_list(result.result())]))
+                    logger.info('Loaded stories %s' % result_id)
         logger.info('Stories are loaded')
 
-    def log_unknown_story(self, storyxml):
+    @staticmethod
+    def log_unknown_story(storyxml):
             logger.warning('Story unknown: %s' % storyxml.id)
             if __debug__:
                 logger.debug(pt_api.to_str(storyxml))
 
-    def log_unknown_task(self, taskxml):
+    @staticmethod
+    def log_unknown_task(taskxml):
             logger.warning('Task unknown: %s' % taskxml.id)
             if __debug__:
                 logger.debug(pt_api.to_str(taskxml))
 
-    def log_unknown_comment(self, commentxml):
+    @staticmethod
+    def log_unknown_comment(commentxml):
             logger.warning('Comment unknown: %s' % commentxml.id)
             if __debug__:
                 logger.debug(pt_api.to_str(commentxml))
 
     def getStory(self, storyxml):
-        ''' If the story is tracked return it
+        """ If the story is tracked return it
             else return None and log the unknwon story
-        '''
+        """
         if storyxml.id in self.stories:
             return self.stories[storyxml.id]
         else:
@@ -255,8 +274,8 @@ class Sleuth(object):
             return None
 
     def process_activity(self, activity):
-        ''' To be run in a thread, process all the activities in the queue
-        '''
+        """ To be run in a thread, process all the activities in the queue
+        """
         with self.update_lock:
             if activity.id in self.processed_activities:
                 if __debug__:
@@ -392,15 +411,15 @@ class Sleuth(object):
     def collect_task_updates(self):
         """ Update the stories since the last time this method was called.
         """
-        def getLastUpdated(project_id, version):
+        def getLastUpdated(a_project_id, version):
             overlap_delta = datetime.timedelta(seconds=self.overlap_seconds)
             new_last_updated = datetime.datetime.utcnow() - overlap_delta
 
-            last_updated = self._get_last_updated(project_id, version)
-            self._set_last_updated(new_last_updated, project_id, version)
+            l_updated = self._get_last_updated(a_project_id, version)
+            self._set_last_updated(new_last_updated, a_project_id, version)
             if __debug__:
-                logger.debug('%s-%s: %s' % (project_id, version, last_updated))
-            return last_updated
+                logger.debug('%s-%s: %s' % (a_project_id, version, l_updated))
+            return l_updated
 
         for project_id in self.project_ids:
             last_updated = getLastUpdated(project_id, 'v3')
@@ -463,7 +482,6 @@ def main(input_args=None):
                         default='INFO', help='The stream logger level.')
     args = parser.parse_args(input_args)
 
-    logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
 
     log_format = "%(asctime)s/+%(relativeCreated)7.0f|%(levelname)s" \
