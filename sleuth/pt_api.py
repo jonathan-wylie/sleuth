@@ -75,7 +75,7 @@ def get_stories(project_id, block, token, story_constructor=lambda project_id,
                             in storiesxml.iterchildren()])
     else:
         if block == "done":
-            url_tmpl = '%s/projects/%s/iterations/%s?offset=-6'
+            url_tmpl = '%s/projects/%s/iterations/%s?offset=-26'
             url = url_tmpl % (URL_API3, project_id, block)
         else:
             url = '%s/projects/%s/iterations/%s' % (URL_API3, project_id, block)
